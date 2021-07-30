@@ -3,7 +3,7 @@
 ### Part 1 기초
 - [Chapter 1 - 자바 8, 9, 10, 11 : 무슨 일이 일어나고 있는가](./contents/chapter01.md)
 - [Chapter 2 - 동작 파라미터화 코드 전달하기](./contents/chapter02.md)
-- Chapter 3 - 람다 표현식
+- [Chapter 3 - 람다 표현식](./contents/chapter03.md)
 
 ### Part 2 함수형 데이터 처리
 - Chapter 4 - 스트림 소개
