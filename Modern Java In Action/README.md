@@ -7,7 +7,7 @@
 
 ### Part 2 함수형 데이터 처리
 - [Chapter 4 - 스트림 소개](./contents/chapter04.md)
-- Chapter 5 - 스트림 활용
+- [Chapter 5 - 스트림 활용](./contents/chapter05.md)
 - Chapter 6 - 스트림으로 데이터 수집
 - Chapter 7 - 병렬 데이터 처리와 성능
 
