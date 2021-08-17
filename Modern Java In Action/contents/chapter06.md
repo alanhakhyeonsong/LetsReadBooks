@@ -100,6 +100,87 @@ public interface Collector<T, A, R> {
 public class ToListCollector<T> implements Collector<T, List<T>, List<T>>
 ```
 
+### supplier 메서드: 새로운 결과 컨테이너 만들기
+supplier 메서드는 빈 결과로 이루어진 Supplier를 반환해야 한다. 즉, 수집 과정에서 빈 누적자 인스턴스를 만드는 파라미터가 없는 함수이다.
+
+### accumulator 메서드: 결과 컨테이너에 요소 추가하기
+accumulator 메서드는 리듀싱 연산을 수행하는 함수를 반환한다. 즉 누적자(스트림의 첫 n-1개 항목을 수집한 상태)와 n번째 요소를 함수에 적용한다. // 제네릭 형식도 `<A, T>`이다.
+
+### finisher 메서드: 최종 변환 값을 결과 컨테이너로 적용하기
+finisher 메서드는 스트림 탐색을 끝내고 누적자 객체를 최종 결과로 반환하면서 누적 과정을 끝낼 때 호출할 함수를 반환해야 한다. ToListCollector와 같이 누적자 객체가 이미 최종 결과인 상황도 있다. 이럴 경우, finisher 함수는 항등 함수를 반환한다.
+
+### combiner 메서드: 두 결과 컨테이너 병합
+combiner는 스트림의 서로 다른 서브파트를 병렬로 처리할 때 누적자가 이 결과를 어떻게 처리할지 정의한다. // BinaryOperator이다.
+
+### characteristics 메서드
+characteristics 메서드는 컬렉터의 연산을 정의하는 Characteristics 형식의 불변 집합을 반환한다. Characteristics는 다음 세 항목을 포함하는 열거형이다. 스트림을 병렬로 리듀스할 것인지 그리고 병렬로 리듀스한다면 어떤 최적화를 선택해야 할지 힌트를 제공한다.
+```java
+enum Characteristics {
+    CONCURRENT,
+    UNORDERED,
+    IDENTITY_FINISH
+}
+```
+- UNORDERED: 리듀싱 결과는 스트림 요소의 방문 순서나 누적 순서에 영향을 받지 않는다.
+- CONCURRENT: 다중 스레드에서 accumulator 함수를 동시에 호출할 수 있으며 병렬 리듀싱을 수행할 수 있다. 컬렉터의 플래그에 UNORDERED를 함께 설정하지 않았다면 데이터 소스가 정렬되어 있지 않은 상황에서만 병렬 리듀싱을 수행할 수 있다.
+- IDENTITY_FINISH: finisher 메서드가 반환하는 함수는 단순히 identity를 적용할 뿐이므로 이를 생략할 수 있다. 따라서 리듀싱 과정의 최종 결과로 누적자 객체를 바로 사용할 수 있다. 또한 누적자 A를 결과 R로 안전하게 형변환할 수 있다.
+
+ToListCollector 구현 예시)
+```java
+import java.util.*;
+import java.util.function.*;
+import java.util.stream.Collector;
+import static java.util.stream.Collector.Characteristics.*;
+
+public class ToListCollector<T> implements Collector<T, List<T>, List<T>> {
+    @Override
+    public Supplier<List<T>> supplier() {
+        return ArrayList::new; // 수집 연산의 시발점
+    }
+
+    @Override
+    public BiConsumer<List<T>, T> accumulator() {
+        return List::add; // 탐색한 항목을 누적하고 바로 누적자를 고친다.
+    }
+
+    @Override
+    public Fucntion<List<T>, List<T>> finisher() {
+        return Function.identity(); // 항등 함수
+    }
+
+    @Override
+    public BinaryOperator<List<T>> combiner() {
+        return (list1, list2) -> { // 두 번째 콘텐츠와 합쳐서 첫 번째 누적자를 고친다.
+            list1.addAll(list2); // 변경된 첫 번재 누적자를 반환한다.
+            return list1;
+        };
+    }
+
+    @Override
+    public Set<Characteristics> characteristics() {
+        return Collections.unmodifiableSet(EnumSet.of(
+            IDENTITY_FINISH, CONCURRENT));
+            // 컬렉터의 플래그를 IDENTITY_FINISH, CONCURRENT로 설정한다.
+    }
+}
+```
+
+### 리듀싱 과정의 논리적 순서
+- 순차 리듀싱 과정의 논리적 순서
+<img src="./images/reducing1.jpg">
+
+1. supplier를 통해 누적할 컨테이너를 공급받는다.
+2. 각 요소에 대하여 accumulator를 통해 컨테이너에 누적한다.
+3. 모든 요소에 대하여 처리를 마쳤다면 finisher를 통해 최종 변환값을 결과 컨테이너로 적용한다.
+
+- 병렬 리듀싱 과정의 논리적 순서
+<img src="./images/reducing2.jpg">
+
+1. 스트림을 여러 서브 파트로 분할한다.
+2. 분할된 서브 파트에 대하여 순차 리듀싱 과정의 변환과정을 처리한다.
+3. 완료된 서브 파트에 대하여 combiner를 통해 결과 컨테이너를 병합한다.
+4. combiner를 통해 완성된 최종 컨테이너를 finisher를 통해 결과 컨테이너로 적용한다.
+
 
 ## 📌정리
 - collect는 스트림의 요소를 요약 결과로 누적하는 다양한 방법(컬렉터라 불리는)을 인수로 갖는 최종 연산이다.
