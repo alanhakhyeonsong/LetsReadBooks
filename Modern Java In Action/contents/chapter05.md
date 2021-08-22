@@ -60,7 +60,7 @@ String[] words = {"Hello", "World"};
 
 Arrays.stream(words)
       .map(word -> word.split("")) // Stream<String[]> 반환
-      .map(Arrays::stream)
+      .map(Arrays::stream) // 각 배열을 별도의 스트림으로 생성
       .distinct()
       .collect(Collectors.toList())
       .forEach(System.out::print);
@@ -79,8 +79,8 @@ Arrays.stream(words)
 String[] words = {"Hello", "World"};
 
 Arrays.stream(words)
-      .map(word -> word.split(""))
-      .flatMap(Arrays::stream)
+      .map(word -> word.split("")) // 각 단어를 개별 문자를 포함하는 배열로 변환
+      .flatMap(Arrays::stream) // 생성된 스트림을 하나의 스트림으로 평면화
       .distinct()
       .collect(Collectors.toList())
       .forEach(System.out::print);
