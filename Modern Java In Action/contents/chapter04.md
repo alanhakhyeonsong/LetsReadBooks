@@ -6,7 +6,7 @@
 ```java
 List<Dish> lowCaloricDishes = new ArrayList<>();
 for(Dish dish : menu) {
-    if(dish.getCalories() < 400>) {
+    if(dish.getCalories() < 400) {
         lowCaloricDishes.add(dish);
     }
 }

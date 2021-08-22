@@ -65,4 +65,4 @@ List<Apple> heavyApples =
 예를 들어 List나 Collection 인터페이스는 이전에 stream이나 parallelStream 메서드를 지원하지 않았다. 하지만, Java 8에서 Collection 인터페이스에 stream 메서드를 추가하고 이를 디폴트 메서드로 제공하여 기존 인터페이스를 쉽게 변경할 수 있었다.
 
 ## 함수형 프로그래밍에서 가져온 다른 유용한 아이디어
-Java 8에서는 NPE(Null Pointer Exception)을 피할 수 있도록 도와주는 Optional< T> 클래스를 제공한다.
+Java 8에서는 NPE(Null Pointer Exception)을 피할 수 있도록 도와주는 `Optional<T>` 클래스를 제공한다.
