@@ -22,7 +22,7 @@ public class AppleRedAndHeavyPredicate implements ApplePredicate {
 
 List<Apple> heavyApples = filterApples(inventory, new AppleRedAndHeavyPredicate());
 ```
-> <img src="./images/filterApples.jpg">
+> <img src="https://user-images.githubusercontent.com/60968342/130902227-5d7efade-6fb5-4524-bb04-b75097e60d59.jpg">
 > 메서드는 객체만 인수로 받으므로 가장 중요한 로직인 test 메서드를 ApplePredicate 객체로 감싸서 전달해야 한다. 동작을 추상화해서 변화하는 요구사항에 대응할 수 있는 코드를 구현하는 방법으로 좋지만, 여러 클래스를 구현해서 인스턴스화 하는 과정을 보면 여전히 개선이 필요하다.
 
 - 익명 클래스를 통한 동작 파라미터화
@@ -39,7 +39,7 @@ List<Apple> redApples = filterApples(inventory, new ApplePredicate() {
 ```java
 List<Apple> result = filterApples(inventory, (Apple apple) -> RED.equals(apple.getColor()));
 ```
-> <img src="./images/graph.jpg">     
+> <img src="https://user-images.githubusercontent.com/60968342/130902235-55a4fd3b-43ab-4467-8084-8d8514c2ed6a.jpg">     
 
 정렬, 스레드, GUI 처리 등 자바 API의 많은 메서드를 다양한 동작으로 파라미터화할 수 있다.
 ```java

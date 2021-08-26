@@ -68,7 +68,7 @@ Map<Dish.Type, Dish> mostCaloricByType =
 3. collectingAndThen 컬렉터는 세 번째 컬렉터인 maxBy를 감싼다.
 4. 리듀싱 컬렉터(maxBy)가 서브스트림에 연산을 수행한 결과에 Optional::get 변환 함수가 적용된다.
 5. groupingBy 컬렉터가 반환하는 맵의 분류 키에 대응하는 값이 각각의 Dish에서 가장 높은 칼로리이다.
-<img src="./images/collector_superposition.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902441-4bf15c9c-ca0e-4840-a48d-2a94ae0c1864.jpg">
 
 ## 분류
 분할은 분할 함수(partitioning function)라 불리는 Predicate를 분류 함수로 사용하는 특수한 그룹화 기능이다. 맵의 키 형식은 Boolean이며, 결과적으로 그룹화 맵은 참 아니면 거짓을 갖는 두 개의 그룹으로 분류된다.
@@ -167,14 +167,14 @@ public class ToListCollector<T> implements Collector<T, List<T>, List<T>> {
 
 ### 리듀싱 과정의 논리적 순서
 - 순차 리듀싱 과정의 논리적 순서
-<img src="./images/reducing1.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902479-767830df-2317-43db-aaa3-7e6f4257eb14.jpg">
 
 1. supplier를 통해 누적할 컨테이너를 공급받는다.
 2. 각 요소에 대하여 accumulator를 통해 컨테이너에 누적한다.
 3. 모든 요소에 대하여 처리를 마쳤다면 finisher를 통해 최종 변환값을 결과 컨테이너로 적용한다.
 
 - 병렬 리듀싱 과정의 논리적 순서
-<img src="./images/reducing2.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902482-73cd04f4-904a-4649-859c-07a80f4950fd.jpg">
 
 1. 스트림을 여러 서브 파트로 분할한다.
 2. 분할된 서브 파트에 대하여 순차 리듀싱 과정의 변환과정을 처리한다.

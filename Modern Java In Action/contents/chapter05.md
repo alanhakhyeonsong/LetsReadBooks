@@ -216,4 +216,4 @@ public static<T> Stream<T> generate(Supplier<T> s)
 - 컬렉션뿐 아니라 값, 배열, 파일, iterate와 generate 같은 메서드로도 스트림을 만들 수 있다.
 - 무한한 개수의 요소를 가진 스트림을 무한 스트림이라 한다.
 
-<img src="./images/streammethods.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902390-c92d75f3-e824-4a2b-b678-1d052fa49d4d.jpg">

@@ -170,7 +170,7 @@ public interface IntPredicate {
 }
 ```
 📌 Java 8에 추가된 함수형 인터페이스
-<img src="./images/functionalinterface.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902301-7e7db1dd-7b9f-4ff4-82e0-db3fe73cbd41.jpg">
 
 - Unary - 파라미터 타입과 반환 타입이 같은 경우    
 ```java

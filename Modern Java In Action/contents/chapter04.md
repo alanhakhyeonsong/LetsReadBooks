@@ -117,7 +117,7 @@ mapping:chicken
 
 최종 연산은 스트림 파이프라인에서 결과를 도출한다. 스트림 이외의 결과가 반환되는 연산을 말한다.
 
-<img src="./images/streamoperation.jpg">
+<img src="https://user-images.githubusercontent.com/60968342/130902353-b1a3126c-1f2b-4ade-98cd-65454be26493.jpg">
 
 ## 📌정리
 - 스트림은 소스에서 추출된 연속 요소로, 데이터 처리 연산을 지원한다.
