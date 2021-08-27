@@ -12,7 +12,7 @@
 - [Chapter 7 - 병렬 데이터 처리와 성능](./contents/chapter07.md)
 
 ### Part 3 스트림과 람다를 이용한 효과적 프로그래밍
-- Chapter 8 - 컬렉션 API 개선
+- [Chapter 8 - 컬렉션 API 개선](./contents/chapter08.md)
 - Chapter 9 - 리팩터링, 테스팅, 디버깅
 - Chapter 10 - 람다를 이용한 도메인 전용 언어
 
