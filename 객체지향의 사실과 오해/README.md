@@ -8,4 +8,4 @@
 - [4장 - 역할, 책임, 협력](./contents/chapter04.md)
 - [5장 - 책임과 메시지](./contents/chapter05.md)
 - [6장 - 객체 지도](./contents/chapter06.md)
-- 7장 - 함께 모으기
+- [7장 - 함께 모으기](./contents/chapter07.md)
