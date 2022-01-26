@@ -12,7 +12,7 @@
 - [아이템 6. 불필요한 객체 생성을 피하라](./contents/chapter02/item06.md)
 - [아이템 7. 다 쓴 객체 참조를 해제하라](./contents/chapter02/item07.md)
 - [아이템 8. finalizer와 cleaner 사용을 피하라](./contents/chapter02/item08.md)
-- [아이템 9. try-finally보다는 try-with-resources를 사용하라]()
+- [아이템 9. try-finally보다는 try-with-resources를 사용하라](./contents/chapter02/item09.md)
 
 ### 3장 - 모든 객체의 공통 메서드
 
