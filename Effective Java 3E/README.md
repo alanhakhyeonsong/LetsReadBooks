@@ -66,7 +66,7 @@
 - [아이템 45. 스트림은 주의해서 사용하라](./contents/chapter07/item45.md)
 - [아이템 46. 스트림에서는 부작용 없는 함수를 사용하라](./contents/chapter07/item46.md)
 - [아이템 47. 반환 타입으로는 스트림보다 컬렉션이 낫다](./contents/chapter07/item47.md)
-- 아이템 48. 스트림 병렬화는 주의해서 적용하라
+- [아이템 48. 스트림 병렬화는 주의해서 적용하라](./contents/chapter07/item48.md)
 
 ### 8장 - 메서드
 
