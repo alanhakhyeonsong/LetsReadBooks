@@ -92,7 +92,7 @@
 - [아이템 65. 리플렉션보다는 인터페이스를 사용하라](./contents/chapter09/item65.md)
 - [아이템 66. 네이티브 메서드는 신중히 사용하라](./contents/chapter09/item66.md)
 - [아이템 67. 최적화는 신중히 하라](./contents/chapter09/item67.md)
-- 아이템 68. 일반적으로 통용되는 명명 규칙을 따르라
+- [아이템 68. 일반적으로 통용되는 명명 규칙을 따르라](./contents/chapter09/item68.md)
 
 ### 10장 - 예외
 
