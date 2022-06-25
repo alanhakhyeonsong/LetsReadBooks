@@ -125,3 +125,45 @@ private FieldType getField() {
 - 성능 때문에 혹은 위험한 초기화 순환을 막기 위해 꼭 지연 초기화를 써야 한다면 올바른 지연 초기화 기법을 사용하자.
 - 인스턴스 필드에는 이중검사 관용구를, 정적 필드에는 지연 초기화 홀더 클래스 관용구를 사용하자.
 - 반복해 초기화해도 괜찮은 인스턴스 필드에는 단일검사 관용구도 고려 대상이다.
+
+## 좀 더 공부하면 좋을 자료
+- [Lazy Initialization in Spring Boot 2](https://www.baeldung.com/spring-boot-lazy-initialization)
+
+```
+<Effects of Lazy Initialization>
+Enabling lazy initialization in the whole application could produce both positive and negative effects.
+
+Let's talk about some of these, as they're described in the official announcement of the new functionality:
+
+1. Lazy initialization may reduce the number of beans created when the application is starting – therefore, we can improve the startup time of the application
+2. As none of the beans are created until they are needed, we could mask issues, getting them in run time instead of startup time
+3. The issues can include out of memory errors, misconfigurations, or class-definition-found errors
+4. Also, when we're in a web context, triggering bean creation on demand will increase the latency of HTTP requests – the bean creation will affect only the first request, but this may have a negative impact on load-balancing and auto-scaling.
+
+```
+
+
+- [Eager/Lazy Loading In Hibernate](https://www.baeldung.com/hibernate-lazy-eager-loading)
+
+```
+<Lazy Loading>
+Advantages:
+
+- Much smaller initial load time than in the other approach
+- Less memory consumption than in the other approach
+
+Disadvantages:
+
+- Delayed initialization might impact performance during unwanted moments.
+- In some cases we need to handle lazily initialized objects with special care, or we might end up with an exception.
+
+<Eager Loading>
+Advantages:
+
+- No delayed initialization-related performance impacts
+
+Disadvantages:
+
+- Long initial loading time
+- Loading too much unnecessary data might impact performance
+```
