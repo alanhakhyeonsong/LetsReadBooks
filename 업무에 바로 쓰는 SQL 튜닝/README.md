@@ -6,7 +6,7 @@
 - [1장. MySQL과 MariaDB 개요](./contents/chapter01.md)
 - 2장. SQL 튜닝 용어를 직관적으로 이해하기
   - [물리 엔진과 오브젝트 용어](./contents/chapter02(1).md)
-  - 논리적인 SQL 개념 용어
+  - [논리적인 SQL 개념 용어](./contents/chapter02(2).md)
   - 개념적인 튜닝 용어
 - 3장. SQL 튜닝의 실행 계획 파헤치기
 - 4장. 악성 SQL 튜닝으로 초보자 탈출하기
