@@ -227,3 +227,5 @@ public class Client {
 → 기존 코드의 변경 없이 새로운 기능을 추가할 수 있는 OCP 원칙이다.
 - Java 8에 추가된 default 메소드란?
 → 인터페이스 내에 기본 구현체를 만들 수 있어서 해당 인터페이스를 상속/구현하는 쪽에서도 해당 메소드를 그대로 사용할 수 있게 해준다.
+
+추가로, Spring의 `BeanFactory`는 Object 타입의 Product를 만드는 Creator라 할 수 있다.
