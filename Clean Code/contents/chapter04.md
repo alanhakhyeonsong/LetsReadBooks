@@ -202,12 +202,72 @@ if (moduleDependees.contains(ourSubSystem))
 ```
 
 ### 위치를 표시하는 주석
+때때로 프로그래머는 소스 파일에서 특정 위치를 표시하려 주석을 사용한다. 예를 들어, 최근에 살펴보던 프로그램에서 다음 행을 발견했다.
+
+```
+// Actions /////////////////////////////////////////////
+```
+이런 주석은 가독성만 낮추므로 제거해야 마땅하다. 특히 뒷부분에 슬래시로 이어지는 잡음은 제거하는 편이 좋다. 너무 자주 사용하지 않을때만 배너는 눈에 띄며 주위를 환기한다. 그러므로 반드시 필요할 때 아주 드물게 사용하는 편이 좋다.
+
 ### 닫는 괄호에 다는 주석
+중첩이 심하고 장황한 함수라면 의미가 있을지도 모르지만 작고 캡슐화된 함수에는 잡음일 뿐이다. 그러므로 닫는 괄호에 주석을 달아야겠다는 생각이 든다면 대신에 함수를 줄이려 시도하자.
+
 ### 공로를 돌리거나 저자를 표시하는 주석
+소스 코드 관리 시스템은 누가 언제 무엇을 추가했는지 귀신처럼 기억하기 때문에 저자 이름으로 코드를 오염시킬 필요가 없다.
+```
+/* 릭이 추가함 */
+```
+
 ### 주석으로 처리한 코드
+주석으로 처리한 코드만큼 밉살스러운 관행도 드물다. 다음과 같은 코드는 작성하지 마라!
+```java
+InputStreamResponse response = new InputStreamResponse();
+response.setBody(formatter.getResultStream(), formatter.getByteCount());
+// InputStream resultsStream = formatter.getResultStream();
+// StreamReader reader = new StreamReader(resultsStream);
+// response.setContent(reader.read(formatter.getByteCount()));
+```
+
+1960년대 즈음에는 주석으로 처리한 코드가 유용했었지만 우리는 우수한 소스 코드 관리 시스템을 사용하기 때문에 우리를 대신해 코드를 기억해준다. 그냥 삭제하라. 잃어버릴 염려는 없다.
+
 ### HTML 주석
+소스 코드에서 HTML 주석은 혐오 그 자체다. HTML 주석은 (주석을 읽기 쉬워야 하는) 편집기/IDE에서조차 읽기가 어렵다. (Javadocs와 같은) 도구로 주석을 뽑아 웹 페이지에 올릴 작정이라면 주석에 HTML 태그를 삽입해야 하는 책임은 프로그래머가 아니라 도구가 져야한다.
+
+```java
+/**
+ * 적합성 테스트를 수행하기 위한 과업
+ * 이 과업은 적합성 테스트를 수행해 결과를 출력한다.
+ * <p/>
+ * <pre>
+ * 용법:
+ * &lt;taskdef name=&quot;execute-fitnesse-test&quot;
+ *     classname=&quot;fitnesse.ant.ExecuteFitnesseTestsTask&quot;
+ * (중략)
+ */
+```
+
 ### 전역 정보
+주석을 달아야 한다면 근처에 있는 코드만 기술하라. 시스템의 전반적인 정보를 기술하지 마라. 해당 시스템의 코드가 변해도 아래 주석이 변하리라는 보장이 전혀 없다. 그리고 심하게 중복된 주석도 확인하자.
+
+```java
+/**
+ * 적합성 테스트가 동작하는 포트: 기본값은 <b>8082</b>.
+ *
+ * @param fitnessePort
+ */
+public void setFitnessePort(int fitnessePort) {
+    this.fitnewssePort = fitnessePort;
+}
+```
+
 ### 너무 많은 정보
+주석에다 흥미로운 역사나 관련 없는 정보를 장황하게 늘어놓지 마라.
+
 ### 모호한 관계
+주석과 주석이 설명하는 코드는 둘 사이 관계가 명백해야 한다.
+
 ### 함수 헤더
+짧은 함수는 긴 설명이 필요 없다. 짧고 한 가지만 수행하며 이름을 잘 붙인 함수가 주석으로 헤더를 추가한 함수보다 훨씬 좋다.
+
 ### 비공개 코드에서 Javadocs
+공개 API는 Javadocs가 유용하지만 공개하지 않을 코드라면 쓸모가 없다. 코드만 보기 싫고 산만해질 뿐이다.
