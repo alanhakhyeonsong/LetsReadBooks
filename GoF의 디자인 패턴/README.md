@@ -8,7 +8,7 @@
 ### 1. 객체 생성 관련 디자인 패턴
 - [싱글톤 패턴](./contents/singleton.md)
 - [팩토리 메소드 패턴](./contents/factory-method.md)
-- 추상 팩토리 패턴
+- [추상 팩토리 패턴](./contents/abstract-factory.md)
 - 빌더 패턴
 - 프로토타입 패턴
 
