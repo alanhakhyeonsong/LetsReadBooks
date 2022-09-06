@@ -10,7 +10,7 @@
 - [팩토리 메소드 패턴](./contents/factory-method.md)
 - [추상 팩토리 패턴](./contents/abstract-factory.md)
 - [빌더 패턴](./contents/builder.md)
-- 프로토타입 패턴
+- [프로토타입 패턴](./contents/prototype.md)
 
 ### 2. 구조 관련 디자인 패턴
 - [어댑터 패턴](./contents/adapter.md)
