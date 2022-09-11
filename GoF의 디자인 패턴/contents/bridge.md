@@ -146,3 +146,11 @@ public class KDA implements Skin {
   - 추상적인 코드와 구체적인 코드를 분리하여 사용할 수 있다. (SRP 원칙)
 - 단점
   - 계층 구조가 늘어나 복잡도가 증가할 수 있다.
+
+## Java와 Spring에서의 활용 예시
+### Java
+- JDBC API, `DriverManager`와 `Driver`
+- SLF4J, 로깅 퍼사드와 로거
+
+### Spring
+- Portable Service Abstraction
