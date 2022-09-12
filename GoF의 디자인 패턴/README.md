@@ -15,7 +15,7 @@
 ### 2. 구조 관련 디자인 패턴
 - [어댑터 패턴](./contents/adapter.md)
 - [브릿지 패턴](./contents/bridge.md)
-- 컴포짓 패턴
+- [컴포짓 패턴](./contents/composite.md)
 - 데코레이터 패턴
 - 퍼사드 패턴
 - 플라이웨이트 패턴
