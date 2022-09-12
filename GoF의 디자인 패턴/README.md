@@ -17,7 +17,7 @@
 - [브릿지 패턴](./contents/bridge.md)
 - [컴포짓 패턴](./contents/composite.md)
 - 데코레이터 패턴
-- 퍼사드 패턴
+- [퍼사드 패턴](./contents/facade.md)
 - 플라이웨이트 패턴
 - [프록시 패턴](./contents/proxy.md)
 
