@@ -18,7 +18,7 @@
 - [컴포짓 패턴](./contents/composite.md)
 - 데코레이터 패턴
 - [퍼사드 패턴](./contents/facade.md)
-- 플라이웨이트 패턴
+- [플라이웨이트 패턴](./contents/flyweight.md)
 - [프록시 패턴](./contents/proxy.md)
 
 ### 3. 행동 관련 디자인 패턴
