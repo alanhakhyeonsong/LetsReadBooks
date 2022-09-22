@@ -62,6 +62,8 @@ public class PostfixNotation {
 ```
 
 ### 인터프리터 패턴 적용 후
+![](https://velog.velcdn.com/images/songs4805/post/a6c00132-db5f-4452-86c7-84fd65aafcbc/image.png)
+
 먼저, expression이라는 트리로 만들기 위해 parser가 있다고 가정하자. `Map`이라는 context 또한 정의해둔다.
 ```java
 public class App {
@@ -180,3 +182,42 @@ public class PostfixParser {
     }
 }
 ```
+여기서 더 나아가 interface에 메소드를 구현하여 전체적인 코드를 좀 더 간결하게 바꿀 수도 있다.
+
+```java
+public interface PostfixExpression {
+
+    int interpret(Map<Character, Integer> context);
+
+    static PostfixExpression plus(PostfixExpression left, PostfixExpression right) {
+        return context -> left.interpret(context) + right.interpret(context);
+    }
+
+    static PostfixExpression minus(PostfixExpression left, PostfixExpression right) {
+        return context -> left.interpret(context) - right.interpret(context);
+    }
+
+    static PostfixExpression multiply(PostfixExpression left, PostfixExpression right) {
+        return context -> left.interpret(context) * right.interpret(context);
+    }
+
+    static PostfixExpression variable(Character c) {
+        return context -> context.get(c);
+    }
+}
+```
+
+## 인터프리터 패턴의 장점과 단점
+- 장점
+  - 자주 등장하는 문제 패턴을 언어와 문법으로 정의할 수 있다.
+  - 기존 코드를 변경하지 않고 새로운 Expression을 추가할 수 있다.
+- 단점
+  - 복잡한 문법을 표현하려면 Expression과 Parser가 복잡해진다.
+
+## Java와 Spring에서의 활용 예시
+### Java
+- 자바 컴파일러
+- 정규 표현식
+
+### Spring
+- SpEL (스프링 Expression Language)
