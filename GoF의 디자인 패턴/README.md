@@ -25,7 +25,7 @@
 - [책임 연쇄 패턴](./contents/chainofresponsibility.md)
 - [커맨드 패턴](./contents/command.md)
 - [인터프리터 패턴](./contents/interpreter.md)
-- 이터레이터 패턴
+- [이터레이터 패턴](./contents/iterator.md)
 - 중재자 패턴
 - 메멘토 패턴
 - 옵저버 패턴
