@@ -27,7 +27,7 @@
 - [인터프리터 패턴](./contents/interpreter.md)
 - [이터레이터 패턴](./contents/iterator.md)
 - [중재자 패턴](./contents/mediator.md)
-- 메멘토 패턴
+- [메멘토 패턴](./contents/memento.md)
 - 옵저버 패턴
 - 상태 패턴
 - [전략 패턴](./contents/strategy.md)
