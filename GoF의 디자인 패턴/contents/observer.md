@@ -192,7 +192,7 @@ public class Client {
   - 런타임 중에 새로운 옵저버를 추가하거나 제거할 수 있다.
 - 단점
   - 복잡도가 증가한다.
-  - 다수의 Observer 객체를 등록 이후 해제하지 않는다면 memory leak가 발생할 수도 있다.
+  - 다수의 Observer 객체를 등록 이후 해제하지 않는다면 memory leak가 발생할 수도 있다. (GC 매커니즘과 `WeakRefernece`에 대해 참고해볼 것)
 
 ## Java와 Spring에서의 활용 예시
 ### Java
