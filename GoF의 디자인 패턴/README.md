@@ -29,7 +29,7 @@
 - [중재자 패턴](./contents/mediator.md)
 - [메멘토 패턴](./contents/memento.md)
 - [옵저버 패턴](./contents/observer.md)
-- 상태 패턴
+- [상태 패턴](./contents/state.md)
 - [전략 패턴](./contents/strategy.md)
 - 템플릿 메소드 패턴
 - 비지터 패턴
