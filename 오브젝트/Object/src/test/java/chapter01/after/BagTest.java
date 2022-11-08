@@ -10,7 +10,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 
 @ExtendWith(MockitoExtension.class)
-public class BagTest {
+class BagTest {
 
     @Mock
     Invitation invitation;
@@ -20,7 +20,7 @@ public class BagTest {
 
     @Test
     @DisplayName("초대장이 있는 경우 값을 지불하지 않는다.")
-    public void testHasInvitation() throws Exception {
+    void testHasInvitation() throws Exception {
         //given
         Ticket ticket = new Ticket(8000L);
 
@@ -29,7 +29,7 @@ public class BagTest {
 
         //then
         assertThat(this.bag.hasInvitation()).isTrue();
-        assertThat(fee).isEqualTo(0L);
+        assertThat(fee).isZero();
         assertThat(this.bag.hasTicket()).isTrue();
     }
 

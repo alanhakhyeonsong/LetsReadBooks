@@ -1,27 +1,33 @@
 package chapter01.after;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import static org.mockito.BDDMockito.then;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
 
 @ExtendWith(MockitoExtension.class)
-public class TicketSellerTest {
+class TicketSellerTest {
 
-    @Mock
+    // SUT
+    TicketSeller ticketSeller;
+
+    // DOC
     TicketOffice ticketOffice;
 
-    @InjectMocks
-    TicketSeller ticketSeller;
+    @BeforeEach
+    void setUp() {
+        ticketOffice = mock(TicketOffice.class);
+        ticketSeller = new TicketSeller(ticketOffice);
+    }
 
     @Test
     @DisplayName("티켓 판매 테스트")
-    public void testSellTo() throws Exception {
+    void testSellTo() throws Exception {
         //given
         Audience audience = new Audience(new Bag(10000L));
 

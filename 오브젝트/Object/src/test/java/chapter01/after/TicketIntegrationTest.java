@@ -7,13 +7,13 @@ import java.time.LocalDateTime;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-public class TicketIntegrationTest {
+class TicketIntegrationTest {
 
     @Test
     @DisplayName("초대장이 있는 관객 테스트")
-    public void testHasInvitation() throws Exception {
+    void testHasInvitation() throws Exception {
         //given
-        Ticket[] tickets = { new Ticket(8000L), new Ticket(8000L), new Ticket(8000L) };
+        Ticket[] tickets = {new Ticket(8000L), new Ticket(8000L), new Ticket(8000L)};
         TicketOffice ticketOffice = new TicketOffice(3L, tickets);
 
         TicketSeller ticketSeller = new TicketSeller(ticketOffice);
@@ -34,9 +34,9 @@ public class TicketIntegrationTest {
 
     @Test
     @DisplayName("초대장이 없는 관객 테스트")
-    public void testHasNotInvitation() throws Exception {
+    void testHasNotInvitation() throws Exception {
         //given
-        Ticket[] tickets = { new Ticket(8000L), new Ticket(8000L), new Ticket(8000L) };
+        Ticket[] tickets = {new Ticket(8000L), new Ticket(8000L), new Ticket(8000L)};
         TicketOffice ticketOffice = new TicketOffice(3L, tickets);
 
         TicketSeller ticketSeller = new TicketSeller(ticketOffice);
