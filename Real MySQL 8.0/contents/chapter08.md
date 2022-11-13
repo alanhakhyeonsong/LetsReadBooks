@@ -43,13 +43,13 @@ B-Tree는 칼럼의 원래 값을 변형시키지 않고 인덱스 구조체 내
 B-Tree는 트리 구조의 최상위에 하나의 루트 노드가 있고 그 하위에 자식 노드가 붙어 있는 형태다. 최하위 노드를 리프 노드라 하고, 중간의 노드들을 브랜치 노드라고 한다.  
 데이터베이스에서 인덱스와 실제 데이터가 저장된 데이터는 따로 관리되는데, 인덱스의 리프 노드는 항상 실제 데이터 레코드를 찾아가기 위한 주솟값을 가지고 있다.
 
-![](https://velog.velcdn.com/images/songs4805/post/d019a6da-8d28-47fe-b556-38c36dd6e35b/image.png)
+![image](https://user-images.githubusercontent.com/60968342/201507290-b64c39df-92d3-4899-81c6-0e3bbe0ae339.png)
 
 위 그림에서와 같이 인덱스의 키 값은 모두 정렬되어 있지만, 데이터 파일의 레코드는 정렬돼 있지 않고 임의의 순서로 저장돼 있다. 데이터 파일의 레코드는 INSERT 된 순서대로 저장되는 것으로 생각하지만 그렇지 않다. 만약 테이블의 레코드를 전혀 삭제하거나 변경하지 않고 INSERT만 수행한다면 맞을 수도 있다. 하지만 레코드가 삭제되어 빈 공간이 생기면 그 다음의 INSERT는 가능한 한 삭제된 공간을 재활용하도록 DBMS가 설계되기 때문에 항상 INSERT된 순서로 저장되는 것은 아니다.
 
-![](https://velog.velcdn.com/images/songs4805/post/5ead032c-32cf-48e7-8e03-64c04d5238b7/image.png)
+![image](https://user-images.githubusercontent.com/60968342/201507300-11f6b0d4-2f4f-4ee5-ac02-f646c44eda08.png)
 
-![](https://velog.velcdn.com/images/songs4805/post/9aff968a-9afa-4fbf-9743-75197b5f8cde/image.png)
+![image](https://user-images.githubusercontent.com/60968342/201507305-f77de4a0-bd7c-43df-9960-88bdb464d141.png)
 
 MyISAM과 InnoDB 스토리지 엔진에서의 인덱스에서 가장 큰 차이는 세컨더리 인덱스를 통해 레코드를 찾아가는 방법이다. MyISAM 테이블은 세컨더리 인덱스가 물리적인 주소를 가지는 반면, InnoDB 테이블은 프라이머리 키를 주소처럼 사용하기 때문에 논리적인 주소를 가진다고 볼 수 있다. 그래서 InnoDB 테이블에서 인덱스를 통해 레코드를 읽을 때는 인덱스에 저장돼 있는 프라이머리 키 값을 이용해 프라이머리 키 인덱스를 한 번 더 검색한 뒤, 프라이머리 키 인덱스의 리프 페이지에 저장돼 있는 레코드를 읽는다.  
 즉, **InnoDB 스토리지 엔진에서는 모든 세컨더리 인덱스 검색에서 데이터 레코드를 읽기 위해서는 반드시 프라이머리 키를 저장하고 있는 B-Tree를 다시 한번 검색해야 한다.**
