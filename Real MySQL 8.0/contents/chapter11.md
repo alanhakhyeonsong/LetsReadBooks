@@ -339,3 +339,55 @@ IN (subquery)와 비슷한 형태지만 이 경우를 안티 세미 조인이라
 
 집합 연산은 모두 임시 테이블이 필요한 작업이다.  
 UNION 키워드 뒤에 아무것도 명시하지 않으면 DISTINCT가 적용된다. 중복인 레코드를 확인하는 방법은 '모든 칼럼'을 비교하는 것이다.
+
+## 잠금을 사용하는 SELECT
+**InnoDB 테이블에 대해 레코드를 SELECT할 때 레코드에 아무런 잠금도 걸지 않는데, 이를 잠금 없는 읽기(Non Locking Consistent Read)라고 한다.** 하지만 SELECT 쿼리를 이용해 읽은 레코드의 칼럼 값을 애플리케이션에서 가공해서 다시 업데이트하고자 할 때는 **SELECT가 실행된 후 다른 트랜잭션이 그 칼럼의 값을 변경하지 못하게 해야 한다.** 이럴 때는 레코드를 읽으면서 강제로 잠금을 걸어 둘 필요가 있는데, 이때 사용하는 옵션이 `FOR SHARE`와 `FOR UPDATE` 절이다.
+
+두 명령은 auto-commit이 비활성화(OFF)된 상태 또는 START TRANSACTION 명령으로 트랜잭션이 시작된 상태에서만 잠금이 유지된다.
+- FOR SHARE : SELECT 쿼리로 읽은 레코드에 대해 읽기 잠금 설정 후 다른 세션에서 해당 레코드를 변경하지 못하게 한다. 다른 세션에서 잠금이 걸린 레코드를 읽는 것은 가능하다.
+- FOR UPDATE : SELECT 쿼리가 읽은 레코드에 대해 쓰기 잠금 설정 후 다른 트랜잭션에서는 그 레코드를 변경하는 것뿐만 아니라 읽기도 수행할 수 없다.
+
+```sql
+SELECT * FROM employees WHERE emp_no = 10001 FOR SHARE;
+SELECT * FROM employees WHERE emp_no = 10001 FOR UPDATE;
+```
+
+한 가지 주의할 사항은 FOR UPDATE나 FOR SHARE 절을 가지지 않는 SELECT 쿼리의 작동 방식이다. InnoDB 스토리지 엔진을 사용하는 테이블에서는 잠금 없는 읽기가 지원되기 때문에 특정 레코드가 `SELECT ... FOR UPDATE` 쿼리에 의해 잠겨진 상태라 하더라도 FOR SHARE나 FOR UPDATE 절을 가지지 않은 단순 SELECT 쿼리는 아무런 대기 없이 실행된다.
+
+### 잠금 테이블 선택
+```sql
+SELECT *
+FROM employees e
+  INNER JOIN dept_emp de ON de.emp_no = e.emp_no
+  INNER JOIN departments e ON d.dept_no = de.dept_no
+FOR UPDATE;
+```
+
+위 쿼리는 employees 테이블과 dept_emp 테이블, departments 테이블을 조인해서 읽으면서 FOR UPDATE 절을 사용했다. 그래서 **InnoDB 스토리지 엔진은 3개 테이블에서 읽은 레코드에 대해 모두 쓰기 잠금(Exclusive Lock)을 걸게 된다.**
+
+그런데, dept_emp, departments 테이블은 그냥 참고용으로만 읽고, 실제 쓰기 잠금은 employees 테이블에만 걸고 싶다면?
+
+MySQL 8.0 버전부터는 잠금을 걸 테이블을 선택할 수 있도록 기능이 개선됐다. FOR UPDATE 뒤에 `OF 테이블` 절을 추가하면 해당 테이블에 대해서만 잠금을 걸게 된다.
+
+```sql
+SELECT *
+FROM employees e
+  INNER JOIN dept_emp de ON de.emp_no = e.emp_no
+  INNER JOIN departments d ON d.dept_no = de.dept_no
+WHERE e.emp_no = 10001
+FOR UPDATE OF e;
+```
+
+### NOWAIT & SKIP LOCKED
+MySQL 8.0 버전부터는 NOWAIT와 SKIP LOCKED 옵션을 사용할 수 있게 기능이 추가됐다. 지금까지의 MySQL 잠금은 누군가가 레코드를 잠그고 있다면 다른 트랜잭션은 그 잠금이 해제될 때까지 기다려야 했다. 때로는 일정 시간이 지나면 잠금 획득 실패 에러 메시지를 받을 수도 있었다. 새로 추가된 해당 옵션은 다음과 같다.
+
+- NOWAIT : 쿼리를 실행 후 읽으려는 row에 lock이 걸려있으면 바로 트랜잭션 실패 처리 (innodb_lock_wait_timeout 만큼 기다리지 않고 바로)
+- SKIP LOCKED : 쿼리를 실행 후 읽으려는 row에 lock 이 걸려있으면 해당 row skip 하고 resultset return (이 절을 사용한 SELECT 구문은 확정적이지 않은(NOT-DETERMINISTIC) 쿼리가 됨)
+
+동시성 이슈를 해결하기 위해 select ~ for update , select ~ for shared mode 같은 쿼리를 수행할 때 위 옵션을 줄 수 있는데 언제 사용하면 좋을까? 보통은 다음과 같다.
+
+- batch 작업 등으로 테이블 내 데이터를 일괄 변경할 때
+- 티켓 예매 서비스 처럼 사용자들이 동시에 몰리는 데이터를 다룰 때
+
+자세한 예제는 다음 링크를 참고하자.  
+// https://kimdubi.github.io/mysql/skip_locked/
