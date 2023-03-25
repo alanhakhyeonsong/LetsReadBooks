@@ -396,3 +396,120 @@ MySQL 8.0 이전 버전에서는 동시성 문제를 해결하기 위해 Redis�
 SKIP LOCKED 절 없이 FOR UPDATE만 사용한 경우에는 동시에 유입된 트랜잭션이 모두 잠금 대기를 하고 있다가 첫 번째 레코드를 잠금 트랜잭션이 완료돼야 비로소 두 번째 트랜잭션이 시작될 수 있고, 이후 트랜잭션들도 마찬가지이다. 아무리 MySQL 서버가 많은 CPU와 메모리를 가지고 있다 하더라도 이처럼 처리가 순차적으로 된다면 서버의 남는 자원을 제대로 활용하지 못한다.
 
 참고로, NOWAIT와 SKIP LOCKED 절은 SELECT ... FOR UPDATE 구문에서만 사용할 수 있으며, 당연히 UPDATE, DELETE 쿼리에선 사용할 수 없다. 쿼리 자체를 비확정적으로 만드는 특성 때문에 UPDATE, DELETE 문에서 사용된다면 실행될 때마다 데이터베이스의 상태를 다른 결과로 만들게 되는 문제가 발생하기 때문이다.
+
+## INSERT
+일반적으로 온라인 트랜잭션 서비스에서 INSERT 문장은 대부분 1건 또는 소량의 레코드를 INSERT하는 형태이므로 그다지 성능에 대해서 고려할 부분이 많지 않다. 오히려 **많은 INSERT 문장이 동시에 실행되는 경우 INSERT 문장 자체보다는 테이블의 구조가 성능에 더 큰 영향을 미친다.** 하지만 많은 경우 INSERT의 성능과 SELECT의 성능을 동시에 빠르게 만들 수 있는 테이블 구조는 없다. 어느 정도 타협하면서 테이블 구조를 설계해야 한다.
+
+### INSERT IGNORE
+IGNORE 옵션은 저장하는 레코드의 PK나 유니크 인덱스 칼럼의 값이 이미 테이블에 존재하는 레코드와 중복되는 경우, 그리고 저장하는 레코드의 칼럼이 테이블의 칼럼과 호환되지 않는 경우 모두 무시하고 다음 레코드를 처리할 수 있게 해준다.
+
+일반적인 경우 에러가 발생하지만, MySQL 서버는 IGNORE 옵션이 있는 경우, 에러를 경고 수준의 메시지로 바꾸고 나머지 레코드의 INSERT를 계속 진행한다. INSERT하고자 하는 데이터가 정교하지 않아도 되는 경우 INSERT를 실행하기 전에 레코드 건건이 중복 체크를 실행하지 않고 INSERT IGNORE 명령으로 처리하는 방식으로 자주 사용된다.
+
+INSERT IGNORE 옵션은 단순히 유니크 인덱스의 중복뿐만 아니라 데이터 타입이 일치하지 않아서 INSERT를 할 수 없는 경우에도, 칼럼의 기본 값으로 INSERT를 하도록 만들기도 한다.
+
+### INSERT ... ON DUPLICATE KEY UPDATE
+INSERT IGNORE 문장은 중복이나 에러 발생 건에 대해서는 모두 무시하겠지만, INSERT ... ON DUPLICATE KEY UPDATE 문장은 PK나 유니크 인덱스의 중복이 발생하면 UPDATE 문장의 역할을 수행하게 해준다. 기존 레코드를 삭제하지 않고 기존 레코드의 칼럼을 UPDATE 하는 방식으로 작동한다.
+
+이 문장은 일별로 집계되는 값을 관리할 때 편리하게 사용할 수 있다.
+
+```sql
+INSERT INTO daily_statistic
+  SELECT target_date, stat_name, stat_value
+  FROM (
+    SELECT DATE(visited_at) target_date, 'VISIT' stat_name, COUNT(*) stat_value
+    FROM access_log
+    GROUP BY DATE(visited_at)
+  ) stat
+  ON DUPLICATE KEY UPDATE daily_statistic.stat_value=daily_statistic.stat_value + stat.stat_value;
+
+INSERT INTO daily_statistic (target_date, stat_name, stat_value)
+  VALUES ('2020-09-01', 'VISIT', 1),
+         ('2020-09-02', 'VISIT', 1)
+    AS new /* 'new'라는 이름으로 별칭 부여 */
+  ON DUPLICATE KEY UPDATE daily_statistic.stat_value=daily_statistic.stat_value + stat.stat_value;
+```
+
+### LOAD DATA 명령 주의 사항
+일반적으로 RDBMS에서 데이터를 빠르게 적재할 수 있는 방법으로 LOAD DATA 명령이 자주 소개된다.  
+MySQL 서버의 LOAD DATA 명령도 내부적으로 MySQL 엔진과 스토리지 엔진의 호출 횟수를 최소화하고 스토리지 엔진이 직접 데이터를 적재하기 때문에 일반적인 INSERT 명령과 비교했을 때 매우 빠르다고 할 수 있다. 하지만 MySQL 서버의 LOAD DATA 명령은 다음과 같은 단점이 있다.
+- 단일 스레드로 실행
+- 단일 트랜잭션으로 실행
+
+데이터가 매우 커서 실행 시간이 아주 길어진다면 다른 온라인 트랜잭션 쿼리들의 성능이 영향을 받을 수 있다. 우선 LOAD DATA 명령은 단일 스레드로 실행되기 때문에 적재해야 할 데이터 파일이 매우 크다면 시간이 매우 길어질 수 있다. 테이블에 여러 인덱스가 있다면 LOAD DATA 문장이 레코드를 INSERT하고 인덱스에도 키 값을 INSERT 해야 한다. 그런데 테이블에 레코드가 INSERT 되면 될수록 테이블과 인덱스의 크기도 커지게 된다. 하지만 LOAD DATA 문장은 단일 스레드로 실행되기 때문에 시간이 지나면 지날수록 INSERT 속도는 현저히 떨어진다.
+
+또한 이 문장은 하나의 트랜잭션으로 처리되기 때문에 LOAD DATA 문장이 시작한 시점부터 언두 로그(Undo Log)가 삭제되지 못하고 유지돼야 한다. 이는 언두 로그를 디스크로 기록해야 하는 부하를 만들기도 하지만, 언두 로그가 많이 쌓이면 레코드를 읽는 쿼리들이 필요한 레코드를 찾는 데 더 많은 오버헤드를 만들어 내기도 한다. 가능하다면 이 문장으로 적재할 데이터 파일을 하나보단 여러 개의 파일로 준비해서 동시에 여러 트랜잭션으로 나뉘어 실행되게 하는 것이 좋다.  
+// INSERT ... SELECT ... 문장으로 WHERE 조건 절에서 데이털르 부분적으로 잘라서 효율적으로 INSERT 할 수 있게 해주는 것이 더 낫다.
+
+## 성능을 위한 테이블 구조
+INSERT 문장의 성능은 쿼리 문장 자체보다는 테이블의 구조에 의해 많이 결정된다. 대부분 INSERT 문장은 단일 레코드를 저장하는 형태로 많이 사용되기 때문에 INSERT 문장 자체는 튜닝할 수 있는 부분이 별로 없는 편이다. 실제 쿼리 튜닝을 할 때도 소량의 레코드를 INSERT하는 문장 자체는 무시하는 경우가 많다.
+
+### 대량 INSERT 성능
+하나의 INSERT 문장으로 수백 건, 수천 건의 레코드를 INSERT 한다면 INSERT될 레코드를 PK 값 기준으로 미리 정렬해서 INSERT 문장을 구성하는 것이 성능에 도움이 될 수 있다. PK 값을 기준으로 정렬해서 덤프된 CSV 파일과 랜덤하게 덤프된 CSV 파일로 적재한 결과는 다음과 같다.
+
+```sql
+mysql> LOAD DATA INFILE '/tmp/sorted_by_primary.csv'
+        INTO TABLE salaries_temp
+        FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+        LINES TERMINATED BY '\n';
+Query OK, 2844047 rows affected (1 min 53.11 sec)
+
+mysql> LOAD DATA INFILE '/tmp/sorted_by_random.csv'
+        INTO TABLE salaries_temp
+        FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+        LINES TERMINATED BY '\n';
+Query OK, 2844047 rows affected (4 min 5.94 sec)
+```
+
+이렇게 시간 차이가 발생하는 가장 큰 이유는 **INSERT 하는 데이터가 PK로 정렬돼 있지 않기 때문**이다. LOAD DATA 문장이 레코드를 INSERT할 때마다 InnoDB 스토리지 엔진은 PK를 검색해서 레코드가 저장될 위치를 찾아야 한다. 그런데 정렬없이 덤프된 데이터 파일의 경우에는 각 레코드의 PK가 너무 다른 값을 가지고 있다. 이로 인해 InnoDB 스토리지 엔진이 레코드를 저장할 때마다 PK의 B-Tree에서 이곳저곳 랜덤한 위치의 페이지를 메모리로 읽어와야 하기 때문에 처리가 더 느린 것이다.
+
+반면, PK로 정렬된 데이터 파일을 적재할 때는 다음에 INSERT할 레코드의 PK 값이 직전에 INSERT된 값보다 항상 크기 때문에 메모리는 PK의 마지막 페이지만 적재돼 있으면 새로운 페이지를 메모리로 가져오지 않아도 레코드를 저장할 위치를 찾을 수 있다.
+
+물론 INSERT 성능은 PK 정렬 여부로 많이 결정되지만 PK가 전부는 아니다. **테이블의 세컨더리 인덱스는 SELECT 문장의 성능을 높이지만, 반대로 INSERT 성능은 떨어진다.** 그래서 테이블에 세컨더리 인덱스가 많을수록, 그리고 테이블이 클수록 INSERT 성능은 떨어진다. 세컨더리 인덱스도 정렬된 순서대로 INSERT 될 수 있다면 더 빠른 성능을 얻을 수 있다. 하지만 하나의 테이블에서 모든 세컨더리 인덱스가 저장되는 순서대로 정렬되게 보장하기는 어렵다. 이러한 이유로 테이블의 세컨더리 인덱스를 너무 남용하는 것은 성능상 좋지 않다.
+
+### PK 선정
+InnoDB 스토리지 엔진을 사용하는 테이블의 PK는 클러스터링 키인데, 이는 세컨더리 인덱스를 이용하는 쿼리보다 PK를 이용하는 쿼리의 성능이 훨씬 빨라지는 효과를 낸다. 그래서 PK는 단순히 INSERT 성능만을 위해 설계해서는 안 된다. PK는 INSERT 성능과 SELECT 성능의 대립되는 두 가지 요소 중에서 하나를 선택해야 함을 의미한다. 이 두 가지 요소를 모두 만족하는 PK를 찾을 수 있다면 더할 나위 없이 좋다. 하지만 그런 경우는 매우 드물다.
+
+SELECT는 거의 실행되지 않고, INSERT가 매우 많이 실행되는 테이블이라면 테이블의 PK를 단조 증가 또는 단조 감소하는 패턴의 값을 선택하는 것이 좋다. 주로 로그를 저장하는 테이블이 이런 류에 속한다.
+
+하지만, 상품이나 주문, 사용자 정보와 같이 중요 정보를 가진 테이블들은 쓰기에 비해 읽기 비율이 압도적으로 높은 경우가 많다. 이러한 류의 테이블에 대해서는 INSERT 보다는 SELECT 쿼리를 빠르게 만드는 방향으로 PK를 선정해야 한다.
+
+또한 SELECT는 많지 않고 INSERT가 많은 테이블에 대해서는 인덱스의 개수를 최소화하는 것이 좋다.
+
+### Auto-Increment 칼럼
+SELECT 보다는 INSERT에 최적화된 테이블을 생성하기 위해서는 다음 두 가지 요소를 갖춰 테이블을 준비하면 된다.
+- 단조 증가 또는 단조 감소되는 값으로 PK 선정
+- 세컨더리 인덱스 최소화
+
+InnoDB 스토리지 엔진을 사용하는 테이블은 자동으로 PK로 클러스터링 된다. 즉, PK로 클러스터링되지 않게 InnoDB 테이블을 생성할 수 없다. 하지만, 자동 증가(Auto-Increment) 칼럼을 이용하면 클러스터링되지 않는 테이블의 효과를 얻을 수 있다.
+
+- Auto-Increment 속성을 가진 칼럼은 반드시 PK나 유니크 키의 일부로 정의되야 한다.
+- Auto-Increment 속성을 가진 칼럼 하나로 PK를 생성할 때는 아무런 제약이 없다.
+- 여러 개의 칼럼으로 PK를 만들 때
+  - Auto-Increment 속성의 칼럼이 제일 앞이라면, 아무런 제약이 없다.
+  - Auto-Increment 속성의 칼럼이 제일 앞이 아니라면, InnoDB에서는 불가능하다. 반드시 Auto-Increment 속성을 가진 칼럼이 제일 앞인 유니크 키가 하나 더 있어야 한다.
+
+## UPDATE와 DELETE
+일반적인 온라인 트랜잭션 프로그램에서 UPDATE와 DELETE 문장은 주로 하나의 테이블에 대해 한 건 또는 여러 건의 레코드를 변경 또는 삭제하기 위해 사용된다. 하지만 MySQL 서버에서는 여러 테이블을 조인해서 한 개 이상 테이블의 레코드를 변경한다거나 삭제하는 기능도 제공한다. 특히 잘못된 데이터를 보정하거나 일괄로 많은 데이터를 변경 및 삭제하는 경우에 JOIN UPDATE와 JOIN DELETE 구문은 매우 유용하다.  
+UPDATE 문장과 DELETE 문장은 작성 방법이나 WHERE 절의 인덱스 사용법 모두 동일하다.
+
+### UPDATE ... ORDER BY ... LIMIT n
+MySQL에서는 UPDATE나 DELETE 문장에 ORDER BY 절과 LIMIT 절을 동시에 사용해 특정 칼럼으로 정렬해서 상위 몇 건만 변경 및 삭제하는 것도 가능하다. 한 번에 너무 많은 레코드를 변경 및 삭제하는 작업은 MySQL 서버에 과부하를 유발하거나 다른 커넥션의 쿼리 처리를 방해할 수도 있다. 이때 LIMIT를 이용해 조금씩 잘라서 변경하거나 삭제하는 방식을 손쉽게 구현할 수 있다.
+
+```sql
+DELETE FROM employees ORDER BY last_name LIMIT 10;
+```
+
+복제가 구축된 MySQL 서버에서 ORDER BY가 포함된 UPDATE 문장을 사용할 때는 주의가 필요하다.
+
+### JOIN UPDATE
+- 조인된 테이블 중 특정 테이블의 칼럼값을 다른 테이블의 칼럼에 업데이트해야 할 때 사용
+- 꼭 다른 테이블의 칼럼값을 참조하지 않더라도 조인되는 양쪽 테이블에 공통으로 존재하는 레코드만 찾아서 업데이트하는 용도로 사용
+
+일반적으로 JOIN UPDATE는 조인되는 모든 테이블에 대해 읽기 참조만 되는 테이블은 읽기 잠금이 걸리고, 칼럼이 변경되는 테이블은 쓰기 잠금이 걸린다. 그래서 **JOIN UPDATE 문장이 웹 서비스 같은 OLTP 환경에서는 데드락을 유발할 가능성이 높으므로 너무 빈번하게 사용하는 것은 피하는 것이 좋다.** 하지만 배치 프로그램이나 통계용 UPDATE 문장에서는 유용하게 사용할 수 있다.
+
+### JOIN DELETE
+```sql
+DELETE e
+FROM employees e, dept_emp de, departments d
+WHERE e.emp_no=de.emp_no AND de.dept_no=d.dept_no AND d.dept_no='d001';
+```
