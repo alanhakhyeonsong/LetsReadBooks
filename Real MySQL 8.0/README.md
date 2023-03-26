@@ -4,7 +4,7 @@
 - [4장. 아키텍처](./contents/chapter04.md)
 - [5장. 트랜잭션과 잠금](./contents/chapter05.md)
 - [8장. 인덱스](./contents/chapter08.md)
-- 9장. 옵티마이저와 힌트
+- [9장. 옵티마이저와 힌트](./contents/chapter09.md)
 - 10장. 실행 계획
 - [11장. 쿼리 작성 및 최적화](./contents/chapter11.md)
 - 13장. 파티션
