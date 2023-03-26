@@ -249,7 +249,7 @@ SELECT col2 FROM tb_test WHERE col1 < const GROUP BY col1, col2;
 SELECT col1, col2 FROM tb_test WHERE col3 = const GROUP BY col1, col2;
 ```
 
-다음 쿼리들은 루스 인덱스 스캔을 사용할 수 없는 쿼리 패턴디다.
+다음 쿼리들은 루스 인덱스 스캔을 사용할 수 없는 쿼리 패턴이다.
 
 ```sql
 -- // MIN()과 MAX() 이외의 집합 함수가 사용됐기 때문에 루스 인덱스 스캔은 사용 불가
@@ -266,3 +266,39 @@ SELECT col1, col3 FROM tb_test GROUP BY col1, col2;
 인덱스를 전혀 사용하지 못할 때는 임시 테이블을 만든다.
 
 GROUP BY 절의 칼럼들로 구성된 유니크 인덱스를 가진 임시 테이블을 만들어서 중복 제거와 집합 함수 연산을 수행한다.
+
+### DISTINCT 처리
+DISTINCT 처리는 크게 두 가지로 나뉠 수 있다. MIN(), MAX(), COUNT() 같은 집합 함수와 함께 사용되는 경우와 그렇지 않은 경우이다.
+
+### SELECT DISTINCT ...
+이 경우 GROUP BY와 동일한 방식으로 처리된다.
+
+```sql
+SELECT DISTINCT emp_no FROM salaries;
+SELECT emp_no FROM salaries GROUP BY emp_no;
+```
+
+DISTINCT를 사용할 때 자주 실수하는 것이 있다. DISTINCT는 SELECT하는 레코드(튜플)를 유니크하게 SELECT 하는 것이지, 특정 칼럼만 유니크하게 조회하는 것이 아니다.
+
+```sql
+SELECT DISTINCT(first_name), last_name FROM employees;
+```
+
+위 쿼리처럼 괄호를 쳐도 의미가 없다.
+
+### 집합 함수와 함께 사용된 DISTINCT
+집합 함수와 함께 사용하는 DISTINCT는 단일 칼럼의 유니크 값을 가져온다. 집합 함수와 함께 사용할 때에는 항상 임시 테이블을 생성한다.
+
+```sql
+SELECT COUNT(DISTINCT s.salary)
+FROM employees e, salaries s
+WHERE e.emp_no=s.emp_no
+  AND e.emp_no BETWEEN 100001 AND 100100;
+```
+
+위 쿼리는 조인한 결과에서 salary를 저장하기 위한 임시 테이블을 만든다. 이 테이블에서의 salary 칼럼에는 유니크 인덱스가 생성되기 때문에 레코드 건수가 많아진다면 상당히 느려질 수 있는 형태의 쿼리다.
+
+### 내부 임시 테이블 활용
+MySQL 엔진이 스토리지 엔진으로부터 받아온 레코드를 정렬하거나 그루핑할 때는 내부적인 임시 테이블(Internal temporary table)을 사용한다. 내부적이라 표현하는 이유는 CREATE TEMPORARY TABLE 명령으로 만든 임시 테이블과는 다르기 때문이다. 일반적으로 MySQL 엔진이 사용하는 임시 테이블은 처음에는 메모리에 생성됐다가 테이블의 크기가 커지면 디스크로 옮겨진다. 또한 다른 세션이나 다른 쿼리에서는 볼 수 없고 쿼리가 완료되면 자동으로 삭제된다.
+
+### 메모리 임시 테이블과 디스크 임시 테이블
