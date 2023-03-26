@@ -143,3 +143,126 @@ ORDER BY first_name;
 - 레코드의 크기가 `max_length_for_sort_data` 시스템 변수에 설정된 값보다 클 때
 - BLOB이나 TEXT 타입의 칼럼이 SELECT 대상에 포함할 때
 
+### 정렬 처리 방법
+쿼리에 ORDER BY가 사용되면 반드시 다음 3가지 처리 방법 중 하나로 정렬이 처리된다.
+- 인덱스를 이용한 정렬: 실행 계획의 Extra 컬럼 -> 별도 표기 없음
+- 조인에서 드라이빙 테이블만 정렬: Using filesort
+- 조인에서 조인 결과를 임시 테이블로 저장 후 정렬: Using temporary; Using filesort
+
+옵티마이저는 먼저 인덱스를 이용해서 정렬할 수 있을지 여부를 체크한다. 인덱스를 사용할 수 있다면 별도의 Filesort 과정 없이 인덱스를 순서대로 읽어서 결과를 반환한다. 하지만 인덱스를 사용할 수 없다면 WHERE 조건에 일치하는 레코드를 검색해 정렬 버퍼에 저장하면서 정렬을 처리(Filesort)할 것이다.
+
+MySQL 옵티마이저는 정렬 대상 레코드를 최소화하기 위해 다음 2가지 방법 중 하나를 선택한다.
+- 조인의 드라이빙 테이블만 정렬한 다음 조인을 수행
+- 조인이 끝나고 일치하는 레코드를 모두 가져온 후 정렬을 수행
+
+### 인덱스를 이용한 정렬
+조건은 다음과 같다.
+- 인덱스를 이용하려면 반드시 ORDER BY에 명시된 칼럼이 제일 먼저 읽는 테이블(조인이 사용된 경우 드라이빙 테이블)에 속해야 한다.
+- ORDER BY의 순서대로 생성된 인덱스가 있어야 한다.
+
+인덱스를 이용한 정렬의 경우 다음과 같은 특징이 있다.
+- 인덱스를 이용한 정렬은 이미 인덱스 자체가 정렬돼있기 때문에 순서대로 읽기만 하면 된다.(추가 작업이 없음)
+- 조인을 하더라도 네스티드 루프 방식으로 실행되기 때문에 조인으로 인해 순서가 흐트러지지 않는다.
+
+![image](https://user-images.githubusercontent.com/60968342/227757413-9194f89a-c223-4711-8a7f-bed1886086af.png)
+
+### 조인의 드라이빙 테이블만 정렬
+일반적으로 조인이 수행되면 결과 레코드 건수가 몇 배로 불어나고, 레코드 하나하나의 크기도 늘어난다. 그래서 조인을 실행하기 전에 첫 번째 테이블의 레코드를 먼저 정렬한 다음 조인을 실행하는 것이 정렬의 차선책이 될 것이다.
+- 조인에서 첫 번째로 읽히는 테이블(드라이빙 테이블)의 칼럼만으로 ORDER BY 절을 작성해야 한다.
+
+```sql
+SELECT *
+FROM employees e, salaries s
+WHERE s.emp_no = e.emp_no
+  AND e.emp_no BETWEEN 100002 AND 100010
+ORDER BY e.last_name; 
+```
+
+우선 WHERE 절이 다음 2가지 조건을 갖추고 있기 때문에 옵티마이저는 employees 테이블을 드라이빙 테이블로 선택할 것이다.
+- WHERE 절의 검색 조건은 employees 테이블의 PK를 이용해 검색하면 작업량을 줄일 수 있다.
+- 드리븐 테이블(salaries)의 조인 칼럼인 emp_no 칼럼에 인덱스가 있다.
+
+검색은 인덱스 레인지 스캔으로 처리할 수 있지만 ORDER BY 절에 명시된 칼럼은 employees 테이블의 PK와 전혀 연관이 없으므로 인덱스를 이용한 정렬은 불가능하다. 그런데 ORDER BY 절의 정렬 기준 칼럼이 드라이빙 테이블(employees)에 포함된 칼럼임을 알 수 있다. 옵티마이저는 드라이빙 테이블만 검색해서 정렬을 먼저 수행하고, 그 결과와 salaries 테이블을 조인한 것이다.
+
+![image](https://user-images.githubusercontent.com/60968342/227757420-a7f8c717-857d-4ec5-babd-ba909703aba8.png)
+
+- 인덱스를 이용해 "emp_no BETWEEN 100001 AND 10010" 조건을 만족하는 9건을 검색
+- 검색 결과를 last_name 칼럼으로 정렬을 수행(Filesort)
+- 정렬된 결과를 순서대로 읽으면서 salaries 테이블과 조인을 수행해 86건의 최종 결과를 가져옴
+
+### 임시 테이블을 이용한 정렬
+- 쿼리가 여러 테이블을 조인하지 않고, 하나의 테이블로부터 SELECT해서 정렬하는 경우라면 임시 테이블이 필요하지 않다.
+- 하지만 그 외의 패턴의 쿼리에서는 항상 조인의 결과를 임시 테이블에 저장하고 그 결과를 다시 정렬하는 과정을 거친다.
+- 이 방법의 정렬은 3가지 방법 중 정렬해야 할 레코드 건수가 가장 많기 때문에 가장 느린 정렬 방법이다.
+
+```sql
+SELECT *
+FROM employees e, salaries s
+WHERE s.emp_no=e.emp_no
+  AND e.emp_no BETWEEN 100002 AND 100010
+ORDER BY s.salary;
+```
+
+이 쿼리의 실행 계획을 보면 Extra 칼럼에 Using temporary; Using filesort 라는 코멘트가 남는다. 이는 조인의 결과를 임시 테이블에 저장하고, 그 결과를 다시 정렬 처리 했음을 의미한다.
+
+![image](https://user-images.githubusercontent.com/60968342/227757987-43b57e22-1fb8-4060-bc2d-d635f1c0d43a.png)
+
+### 정렬 처리 방법의 성능 비교
+일반적으로 limit는 처리하는 양을 줄일 수 있기 때문에 서버가 처리할 작업량을 줄일 수 있다고 생각한다. 하지만 데이터를 처리하는 방식에 따라 limit으로 처리량이 줄 수도 있고 줄지 않을 수도 있다. 
+
+- 스트리밍 방식: 서버 쪽에서 레코드가 검색될 때마다 바로바로 클라이언트로 결과를 전송해주는 방식. 이 방식에서는 limit 제한을 걸면 처리량을 줄이고 마지막 레코드를 가져오는 시간을 줄일 수 있다.
+- 버퍼링 방식: 데이터를 스캔할 때 ORDER BY나 GROUP BY를 걸면 스트리밍이 불가능하다. WHERE 조건에 만족하는 모든 레코드를 가져와서 정렬하거나 그루핑해서 차례로 응답을 보내야한다. 즉, 결과를 모아서 일괄 가공해야 하므로 limit와 같은 결과 건수를 제한하는 조건은 성능 향상에 도움이 되지 않는다.
+- ORDER BY 처리 방식 중에서 인덱스를 이용한 정렬 방식만 스트리밍 형태의 처리이고 나머지는 모두 버퍼링 방식이다.
+
+### GROUP BY 처리
+GROUP BY는 ORDER BY와 비슷하게 스트리밍 방식의 데이터 처리를 사용할 수 없게 만든다. HAVING 절은 GROUP BY 결과에 대해 필터링 역할을 수행한다. GROUP BY에 사용된 조건은 인덱스를 사용해서 처리될 수 없으므로 HAVING 절을 튜닝하려고 인덱스를 생성하거나 다른 방법을 고민할 필요는 없다.
+
+GROUP BY 작업은 다음과 같이 나눌 수 있다.
+- 인덱스 이용
+  - 인덱스 스캔: 인덱스를 차례로 읽는 방식
+  - 루스 인덱스 스캔: 인덱스를 건너뛰면서 읽는 방식
+- 인덱스 사용 x: 임시 테이블 사용
+
+### 인덱스 스캔을 이용하는 GROUP BY (타이트 인덱스 스캔)
+사용 조건은 다음과 같다.
+- 조인의 드라이빙 테이블에 속한 칼럼만을 이용해 그루핑
+- GROUP BY의 순서로 인덱스가 있어야 함
+
+### 루스 인덱스 스캔을 이용하는 GROUP BY
+인덱스의 레코드를 건너뛰면서 필요한 부분만 읽어서 가져오는 방식을 의미한다.
+
+MySQL의 루스 인덱스 스캔 방식은 단일 테이블에 대해 수행되는 GROUP BY 처리에만 사용할 수 있다. 또한 프리픽스 인덱스(칼럼값의 앞쪽 일부만으로 생성된 인덱스)는 루스 인덱스 스캔을 사용할 수 없다.  
+인덱스 레인지 스캔에서는 유니크한 값의 수가 많을수록 성능이 향상되는 반면 루스 인덱스 스캔에서는 인덱스의 유니크한 값의 수가 적을수록 성능이 향상된다.
+
+**즉, 루스 인덱스 스캔은 분포도가 좋지 않은 인덱스일수록 더 빠른 결과를 만들어낸다. 루스 인덱스 스캔으로 처리되는 쿼리에서는 별도의 임시 테이블이 필요하지 않다.**
+
+루스 인덱스 스캔이 사용될 수 있을지 없을지 판단하는 것은 어렵다.
+
+다음 쿼리들은 루스 인덱스 스캔을 사용할 수 있는 예제이다. (col1, col2, col3 순으로 인덱스)
+```sql
+SELECT col1, col2 FROM tb_test GROUP BY col1, col2;
+SELECT DISTINCT col1, col2 FROM tb_test;
+SELECT col1, MIN(col2) FROM tb_test GROUP BY col1;
+SELECT col1, col2 FROM tb_test WHERE col1 < const GROUP BY col1, col2;
+SELECT MAX(col3), MIN(col3), col1, col2 FROM tb_test WHERE col2 > const GROUP BY col1, col2;
+SELECT col2 FROM tb_test WHERE col1 < const GROUP BY col1, col2;
+SELECT col1, col2 FROM tb_test WHERE col3 = const GROUP BY col1, col2;
+```
+
+다음 쿼리들은 루스 인덱스 스캔을 사용할 수 없는 쿼리 패턴디다.
+
+```sql
+-- // MIN()과 MAX() 이외의 집합 함수가 사용됐기 때문에 루스 인덱스 스캔은 사용 불가
+SELECT col1, SUM(col2) FROM tb_test GROUP BY col1;
+
+-- // GROUP BY에 사용된 칼럼이 인덱스 구성 칼럼의 왼쪽부터 일치하지 않기 때문에 사용 불가
+SELECT col1, col2 FROM tb_test GROUP BY col2, col3;
+
+-- // SELECT 절의 칼럼이 GROUP BY와 일치하지 않기 때문에 사용 불가
+SELECT col1, col3 FROM tb_test GROUP BY col1, col2;
+```
+
+### 임시 테이블을 사용하는 GROUP BY
+인덱스를 전혀 사용하지 못할 때는 임시 테이블을 만든다.
+
+GROUP BY 절의 칼럼들로 구성된 유니크 인덱스를 가진 임시 테이블을 만들어서 중복 제거와 집합 함수 연산을 수행한다.
