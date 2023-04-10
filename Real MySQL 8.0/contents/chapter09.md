@@ -392,3 +392,94 @@ for (row1 IN employees) {
 MySQL 8.0.18 버전부터는 해시 조인 알고리즘이 도입되어 이 방식은 사용되지 않는다.
 
 ### 인덱스 컨디션 푸시다운(index_condition_pushdown)
+```sql
+ALTER TABLE employees ADD INDEX ix_lastname_firstname (last_name, first_name);
+
+SELECT * FROM employees WHERE last_name='Action' AND first_name like '%sal';
+```
+위의 SELECT 쿼리에서 `index_condition_pushdown`을 off로 설정하면 `last_name`을 기준으로 인덱스를 타고 `first_name like '%sal'` 조건은 레코드에 직접 접근해서 검사를 한다. 그러나 `index_condition_pushdown`을 on으로 설정하면 index 내에서 비교를 수행하고 비교한 대상 레코드에만 접근해서 데이터를 가져올 수 있다.
+
+like 조건은 인덱스 레인지 스캔으로 검색해야 할 인덱스의 범위를 좁힐 수 없다. 때문에 MySQL 5.6 버전 이전까진 위 쿼리 실행 시 동작 과정은 다음과 같았다. `last_name='Action'` 이라는 조건으로 인덱스 레인지 스캔을 하고 테이블의 레코드를 읽은 후, like 조건에 부합되는지 비교하는 과정에서 10만 건 중 1건만 like 조건에 일치한다면 99,999건의 레코드 읽기가 불필요한 작업이 된다.
+
+### 인덱스 확장(use_index_extensions)
+InnoDB 스토리지 엔진을 사용하는 테이블에서 세컨더리 인덱스에 자동으로 추가된 프라이머리 키를 활용할 수 있게 할지를 결정하는 옵션이다.
+
+```sql
+CREATE TABLE dept_emp (
+  emp_no INT NOT NULL,
+  dept_no CHAR(4) NOT NULL,
+  from_date DATE NOT NULL,
+  to_date DATE NOT NULL,
+  PRIMARY KEY (dept_no, emp_no),
+  KEY ix_fromdate (from_date)
+) ENGINE=InnoDB;
+```
+
+InnoDB 스토리지 엔진은 PK를 클러스터링 키로 생성한다. 그래서 모든 세컨더리 인덱스는 리프 노드에 PK 값을 가진다. 세컨더리 인덱스는 데이터 레코드를 찾아가기 위해 PK인 dept_no와 emp_no 칼럼을 순서대로(PK에 명시된 순서) 포함한다. 그래서 최종적으로 ix_fromdate 인덱스는 (from_date, dept_no, emp_no) 조합으로 인덱스를 생성한 것과 흡사하게 작동할 수 있게 된다.
+
+InnoDB의 PK가 세컨더리 인덱스에 포함돼 있으므로 정렬 작업도 인덱스를 활용해서 처리되는 장점도 있다.
+
+```sql
+EXPLAIN SELECT * FROM dept_emp WHERE from_date='1987-07-25' ORDER BY dept_no;
+```
+위 쿼리를 통해 실행 계획을 확인하면, Extra 칼럼에 "Using Filesort"가 표시되지 않는데, MySQL 서버가 별도의 정렬 작업 없이 인덱스 순서대로 레코드를 읽기만 함으로써 정렬을 만족했음을 의미한다.
+
+### 인덱스 머지(index_merge)
+인덱스 머지 실행 계획을 사용하면 하나의 테이블에 대해 2개 이상의 인덱스를 이용해 쿼리를 처리한다.
+
+하나의 인덱스를 사용해서 작업 범위를 충분히 줄일 수 있는 경우라면 하나의 인덱스만 활용하는 것이 효율적이다. 하지만, 쿼리에 사용된 각각의 조건이 서로 다른 인덱스를 사용할 수 있고 그 조건을 만족하는 레코드 건수가 많을 것으로 예상될 때 MySQL 서버는 인덱스 머지 실행 계획을 선택한다.
+
+- index_merge_intersection
+- index_merge_union
+- index_merge_sort_union
+
+### 인덱스 머지 - 교집합(index_merge_intersection)
+이 실행 계획은 여러 개의 인덱스를 각각 검색해서 그 결과의 교집합을 반환한다. 실행계획의 Extra 칼럼에 Using intersect로 표시됨을 확인할 수 있다.
+
+```sql
+SELECT * FROM employees WHERE first_name='George' AND emp_no BETWEEN 10000 AND 20000;
+```
+위 쿼리에서 두 조건에 대한 인덱스가 모두 존재하고 모두 상대적으로 많은 레코드를 가져와서 처리해야 한다면 인덱스를 각각 검색헤서 교집합 하는 방식이 더 효율적일 수 있다.
+
+### 인덱스 머지 - 합집합(index_merge_union)
+이 실행 계획은 여러 개의 인덱스를 각각 검색해서 그 결과의 합집합을 반환한다. 실행계획의 Extra 칼럼에 Using union으로 표시됨을 확인할 수 있다.
+
+```sql
+SELECT * FROM employees WHERE first_name='Matt' OR hire_date='2022-07-13';
+```
+이 경우 인덱스 머지 방식을 사용할 때 중복을 제거해주어야 한다. 각각의 인덱스로 조회 시 emp_no(PK)를 기준으로 정렬이 되어 있으므로 인덱스 머지를 수행할 때 각 집합에서 하나씩 가져와 비교하며 중복된 레코드를 걸러낼 수 있다. (Priority Queue)
+
+![image](https://user-images.githubusercontent.com/60968342/230865616-ff401ac3-c766-468f-be16-3e1960d929ab.png)
+
+### 인덱스 머지 - 정렬 후 합집합(index_merge_sort_union)
+Union 알고리즘에서 정렬된 결과로 중복 제거를 하는데 이미 정렬이 되어있으므로 필요하지 않았다. 도중에 정렬이 필요한 경우에는 sort union 알고리즘을 사용한다.
+
+### 세미 조인(semijoin)
+다른 테이블과 실제 조인을 수행하지는 않고, 단지 다른 테이블에서 조건에 일치하는 레코드가 있는지 없는지만 체크하는 형태의 쿼리를 세미 조인이라 한다.
+
+```sql
+SELECT * FROM employees e
+WHERE e.emp_no IN
+  (SELECT de.emp_no FROM dept_emp de WHERE de.from_date='1995-01-01');
+```
+
+세미 조인 최적화의 방식은 다음과 같다.
+- Table Pull-out
+- Duplicate Weed-out
+- First Match
+- Loose Scan
+- Materialization
+
+### 테이블 풀-아웃(Table Pull-out)
+Table pullout 최적화는 세미 조인의 서브쿼리에 사용된 테이블을 아우터 쿼리로 끄집어낸 후 쿼리를 조인 쿼리로 재작성하는 형태의 최적화다. 이는 서브쿼리 최적화가 도입되기 이전에 수동으로 쿼리를 튜닝하던 대표적인 방법이다.
+  - IN(subquery) 형태의 세미 조인이 가장 빈번하게 사용되는 형태의 쿼리이다.
+
+실행 계획의 Extra 칼럼에 특별한 문구가 출력되지 않는다. 그래서 Table pullout 최적화가 사용됐는지는 실행 계획에서 해당 테이블들의 id 칼럼 값이 같은지 다른지를 비교해보는 것이 가장 간단한 방법이다. 또는 EXPLAIN 명령을 실행한 직후 SHOW WARNINGS 명령으로 MySQL 옵티마이저가 재작성한 쿼리를 살펴보는 것이다. 이 때 IN(subquery) 형태는 사라지고 join으로 재작성된 것을 확인할 수 있다.
+
+- Table pullout 최적화는 세미 조인 서브쿼리에서만 사용 가능하다.
+- Table pullout 최적화는 서브쿼리 부분이 UNIQUE 인덱스나 PK 룩업으로 결과가 1건인 경우에만 사용 가능하다.
+- Table pullout이 적용된다 하더라도 기존 쿼리에서 가능했던 최적화 방법이 사용 불가능한 것은 아니므로 MySQL에선 가능하담녀 Table pullout 최적화를 최대한 적용한다.
+- Table pullout 최적화는 서브쿼리 테이블을 아우터 쿼리로 가져와서 조인으로 풀어쓰는 최적화를 수행하는데, 만약 서브쿼리의 모든 테이블이 아우터 쿼리로 끄집어 낼 수 있다면 서브쿼리 자체는 없어진다.
+- MySQL에서는 "최대한 서브쿼리를 조인으로 풀어서 사용해라"라는 튜닝 가이드가 많은데, Table pullout 최적화는 사실 이 가이드를 그대로 실행하는 것이다. 이제부터는 서브쿼리를 조인으로 풀어서 사용할 필요가 없다.
+
+### 퍼스트 매치(firstmatch)
