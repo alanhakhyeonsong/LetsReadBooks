@@ -483,3 +483,112 @@ Table pullout 최적화는 세미 조인의 서브쿼리에 사용된 테이블�
 - MySQL에서는 "최대한 서브쿼리를 조인으로 풀어서 사용해라"라는 튜닝 가이드가 많은데, Table pullout 최적화는 사실 이 가이드를 그대로 실행하는 것이다. 이제부터는 서브쿼리를 조인으로 풀어서 사용할 필요가 없다.
 
 ### 퍼스트 매치(firstmatch)
+IN(subquery) 형테의 세미 조인을 EXISTS(subquery) 형태로 튜닝한 것과 비슷한 방법으로 실행된다. 실행 계획에서 extra 칼럼에 `FirstMatch(e)`라는 문구가 출력된다.
+
+책의 예제를 보면, 실행 계획의 id 칼럼의 값이 모두 1로 표시된 것으로 봐서 위의 FirstMatch 최적화 예제에서 titles 테이블이 서브쿼리 패턴으로 실행되지 않고, 조인으로 처리됐다는 것을 알 수 있다. `FirstMatch(e)` 문구는 employees 테이블의 레코드에 대해 titles 테이블에 일치하는 레코드 1건만 찾으면 더이상의 titles 테이블 검색을 하지 않는다는 것을 의미한다.
+
+퍼스트 매치 최적화의 몇 가지 제한 사항과 특성은 다음과 같다.
+- FirstMatch는 서브쿼리에서 하나의 레코드만 검색되면 더이상의 검색을 멈추는 단축 실행 경로이기 때문에 FirstMatch 최적화에서 서브쿼리는 그 서브쿼리가 참조하는 모든 아우터 테이블이 먼저 조회된 이후에 실행된다.
+- FirstMatch 최적화가 사용되면 실행 계획의 Extra 칼럼에는 "FirstMatch(table-N)" 문구가 표시된다.
+- FirstMatch 최적화는 상관 서브 쿼리(Correlated subquery)에서도 사용될 수 있다.
+- FirstMatch 최적화는 GROUP BY나 집합 함수가 사용도니 서브쿼리의 최적화에는 사용될 수 없다.
+
+이 최적화는 `optimizer_switch` 시스템 변수에서 `semijoin` 옵션과 `firstmatch` 옵션이 모두 ON으로 활성화 된 경우에만 사용할 수 있다.
+
+### 루스 스캔(loosescan)
+Loose Index Scan과 비슷한 읽기 방식을 사용한다.
+
+![image](https://user-images.githubusercontent.com/60968342/231064088-f7e51054-f3a4-48fb-9757-5bcaabe66853.png)
+
+### 구체화(Materialization)
+Mataerialization 최적화는 세미 조인에 사용된 서브쿼리를 통째로 구체화해서 쿼리를 최적화한다. 여기서 구체화(Materialization)는 쉽게 말해 내부 임시 테이블을 만드는 것을 의미한다.
+
+`optimizer_switch` 시스템 변수에서 `semijoin`, `materialization` 옵션이 모두 ON인 경우에 활성화 된다.(default)
+
+### 중복 제거(Duplicated Weed-out)
+세미 조인 서브쿼리를 일반적인 INNER JOIN 쿼리로 바꿔서 실행하고 마지막에 중복된 레코드를 제거하는 방법으로 처리되는 최적화 알고리즘이다.
+
+```sql
+SELECT * FROM employees e
+WHERE e.emp_no IN (SELECT s.emp_no FROM salaries s WHERE s.salary>150000);
+```
+위의 쿼리는 다음과 같이 바뀌어서 실행된다.
+
+```sql
+SELECT e.*
+FROM employees e, salaries s
+WHERE e.emp_no=s.emp_no AND s.salary>150000
+GROUP BY e.emp_no;
+```
+
+처리 과정은 다음과 같다.
+1. salaries 테이블의 ix_salary 인덱스를 스캔해서 salary가 150000보다 큰 사원을 검색해 employees 테이블 조인을 실행
+2. 조인된 결과를 임시 테이블에 저장
+3. 임시 테이블에 저장된 결과에서 emp_no 기준으로 중복 제거
+4. 중복을 제거하고 남은 레코드를 최종적으로 반환
+
+다음과 같은 장점과 제약 사항이 있다.
+- 서브쿼리가 상관 서브쿼리라고 하더라도 사용할 수 있는 최적화다.
+- 서브쿼리가 GROUP BY나 집합 함수가 사용된 경우에는 사용될 수 없다.
+- Duplicate Weedout은 서브쿼리의 테이블을 조인으로 처리하기 때문에 최적화 할 수 있는 방법이 많다.
+
+### 컨디션 팬아웃(condition_fanout_filter)
+조인을 실행할 때 테이블의 순서는 쿼리의 성능에 매우 큰 영향을 미친다. MySQL 옵티마이저는 여러 테이블이 조인되는 경우 가능하다면 일치하는 레코드 건수가 적은 순서대로 조인을 실행한다.
+
+실행계획에는 쿼리 실행 시 읽게 될 rows의 갯수와 실행 결과 rows의 비율인 filtered 칼럼이 있다.
+- rows * filtered / 100 = 쿼리 실행 결과 나오게 될 rows 수
+
+옵티마이저는 condition_fanout_filter 최적화 기능을 활성화하여 보다 정교한 계산을 할 수 있다.
+- WHERE 조건절에 사용된 칼럼에 인덱스가 있는 경우
+- WHERE 조건절에 사용된 칼럼에 히스토그램이 존재하는 경우
+
+### 파생 테이블 머지(derived_merge)
+MySQL 5.7버전부터는 파생 테이블로 만들어지는 서브쿼리를 외부 쿼리와 병합해서 서브쿼리 부분을 제거하는 최적화가 도입됐다.
+
+derived_merge 최적화 옵션을 통해 이러한 최적화를 활성화할지 여부를 결정한다.
+
+```sql
+SELECT * FROM (
+	SELECT * FROM employees WHERE first_name='Matt'
+) dervied_table
+WHERE derived_table.hire_date='2022-07-01'
+```
+
+위의 쿼리 실행 계획을 보면 from 절에 사용된 서브쿼리를 파생 테이블이라 부른다. 이러한 임시 테이블이 외부 쿼리로 병합된 경우 show warnings 명령으로 옵티마이저가 작성한 쿼리를 보자.
+```sql
+SELECT * FROM employees
+WHERE employees.hiredate = '2022-07-01' AND employees.first_name = 'Matt'
+```
+
+### 인비저블 인덱스(use_invisible_indexes)
+MySQL 8.0 버전부터는 인덱스의 가용 상태를 제어할 수 있는 기능이 추가됐다.
+이를 통해 인덱스를 삭제하지 않고, 해당 인덱스를 사용하지 못하게 제어할 수 있다.
+
+`ALTER TABLE ... ALTER INDEX ... [ VISIBLE | INVISIBILE ]`
+
+### 스킵 스캔(skip_scan)
+인덱스의 핵심은 값이 정렬돼 있다는 것이며, 이로 인해 인덱스를 구성하는 칼럼의 순서가 매우 중요하다.
+(A, B, C)로 구성된 인덱스가 있을 때 B와 C 칼럼에 대한 조건을 가지고 있다면 인덱스를 활용할 수 없다.
+인덱스 스킵 스캔은 제한적이긴 하지만 인덱스의 이러한 제약을 해소하는 최적화 기법이다.
+
+```sql
+ALTER TABLE EMPLOYEES ADD INDEX IX_GENDER_BIRTHDATE (GENDER, BIRTH_DATE);
+```
+
+위의 인덱스에서 이 경우 `select * from employees where birth_date >= '1992-01-11';` 쿼리를 실행할 때 인덱스를 사용할 수 있을까?
+
+MySQL 8.0 버전 부터는 인덱스 스킵 스캔 최적화가 도입되어 후행 칼럼만으로 인덱스를 이용한 쿼리 성능 개선이 가능하다. (단, 선행 칼럼이 소수의 유니크한 값을 가질 때)
+
+### 해시 조인(hash_join)
+많은 사용자들이 해시 조인 기능을 기대하는 이유가 기존의 네스티드 루프 조인보다 해시 조인이 빠르다고 생각해서이다. 하지만 항상 그렇지는 않다. 해시 조인 쿼리는 최고 스루풋 전략(첫 번째 레코드를 찾는 데는 시간이 많이 걸리지만 최종 레코드를 찾는 데까지는 많이 걸리지 않는다)에 적합하고, 네스티드 루프 조인(첫 번째 레코드를 찾는 것은 빠르지만 마지막 레코드를 찾는 데에 시간이 많이 걸린다)은 최고 응답 속도 전략에 적합하다.
+
+일반적인 웹 서비스는 온라인 트랜잭션(OLTP) 서비스이기 때문에 스루풋도 중요하지만 응답 속도가 더 중요하다. 그리고 분석과 같은 서비스는 사용자의 응답 시간보다는 전체적으로 처리 소요 시간이 중요하기 때문에 응답 속도보다는 전체 스루풋이 중요하다.
+
+해시 조인 절차는 다음과 같다.
+- 빌드 단계 : 조인 대상 테이블 중에서 레코드 건수가 적은 테이블을 골라서 해시 테이블을 생성하는 작업 수행
+- 프로브 단계 : 나머지 테이블의 레코드를 읽어서 해시 테이블의 일치 레코드를 찾는 과정
+
+### 인덱스 정렬 선호(prefer_ordering_index)
+MySQL 옵티마이저는 ORDER BY 또는 GROUP BY를 인덱스를 사용해 처리 가능한 경우 쿼리의 실행 계획에서 이 인덱스의 가중치를 높이 설정해서 실행한다.
+
+옵티마이저의 이런 가중치 부여하지 않게 하기위해 prefer_ordering_index 옵션이 추가되었다. 이를 off 로 설정하면 된다.
