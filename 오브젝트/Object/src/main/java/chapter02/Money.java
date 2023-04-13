@@ -1,6 +1,7 @@
 package chapter02;
 
 import java.math.BigDecimal;
+import java.util.Objects;
 
 public class Money {
     public static final Money ZERO = Money.wons(0);
@@ -37,5 +38,22 @@ public class Money {
 
     public boolean isGreaterThanOrEqual(Money other) {
         return amount.compareTo(other.amount) >= 0;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null || getClass() != o.getClass()) {
+            return false;
+        }
+        Money money = (Money) o;
+        return amount.compareTo(money.amount) == 0;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(amount);
     }
 }
