@@ -127,6 +127,39 @@ class MovieTest {
                     }
                 }
             }
+
+            @Nested
+            @DisplayName("상영 시작 시간이 할인 조건에 맞지 않는다면")
+            class Context_with_invalid_period {
+                final List<LocalDateTime> 할인_조건에_맞지_않는_상영_시작_시간들 = List.of(
+                        // 월요일
+                        givenMonday.withHour(9).withMinute(59),
+                        givenMonday.withHour(12).withMinute(0),
+                        // 목요일
+                        givenThursday.withHour(9).withMinute(59),
+                        givenThursday.withHour(21).withMinute(0),
+                        // 그 외의 요일
+                        givenTuesday.withHour(10).withMinute(0),
+                        givenTuesday.withHour(10).withMinute(1),
+                        givenTuesday.withHour(10).withMinute(30)
+                );
+
+                List<Screening> givenScreens() {
+                    return 할인_조건에_맞지_않는_상영_시작_시간들.stream()
+                            .map(상영시간 -> new Screening(givenMovie(), -1, 상영시간))
+                            .collect(Collectors.toList());
+                }
+
+                @Test
+                @DisplayName("할인되지 않은 금액을 리턴한다.")
+                void it_returns_fee_does_not_discounted() {
+                    for (Screening 할인되는_시간에_시작되는_상영 : givenScreens()) {
+                        final Money 계산된_요금 = subject(할인되는_시간에_시작되는_상영);
+
+                        assertThat(기본요금()).isEqualTo(계산된_요금);
+                    }
+                }
+            }
         }
     }
 }
