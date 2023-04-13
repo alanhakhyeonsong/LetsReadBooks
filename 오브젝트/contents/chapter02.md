@@ -24,7 +24,7 @@
 
 객체지향은 객체라는 단위 안에 데이터와 기능을 한 덩어리로 묶음으로써 문제 영역의 아이디어를 적절하게 표현할 수 있게 했다. 이처럼 데이터와 기능을 객체 내부로 함께 묶는 것을 **캡슐화**라고 부른다.
 
-객체 내부에 대한 접근을 통제하는 이유는 객체를 자율적인 존재로 만들기 위해서다. 객체지향의 핵심은 스스로 상태를 관리하고, 판단하고, 행동하는 자율적인 객체들의 공동체를 구성하는 것이다. 객체가 자율적인 존재로 우뚝 서기 위해서는 외부의 간섭을 최소화해야 한다. 외부에서는 객체가 어떤 상태에 놓여 있는지, 어떤 생각을 하고 있는지 알아서는 안 되며, 결정에 직접적으로 개입하려고 해서도 안 된다ㅣ.
+객체 내부에 대한 접근을 통제하는 이유는 객체를 자율적인 존재로 만들기 위해서다. 객체지향의 핵심은 스스로 상태를 관리하고, 판단하고, 행동하는 자율적인 객체들의 공동체를 구성하는 것이다. 객체가 자율적인 존재로 우뚝 서기 위해서는 외부의 간섭을 최소화해야 한다. 외부에서는 객체가 어떤 상태에 놓여 있는지, 어떤 생각을 하고 있는지 알아서는 안 되며, 결정에 직접적으로 개입하려고 해서도 안 된다.
 
 캡슐화와 접근 제어는 두 부분으로 나눈다.
 - public interface: 외부에서 접근 가능한 부분
@@ -56,7 +56,7 @@
 `DiscountPolicy`는 할인 여부와 요금 계산에 필요한 전체적인 흐름은 정의하지만, 실제로 요금을 계산하는 부분은 추상 메서드인 `getDiscountAmount()` 에게 위임한다. 실제로는 이를 상속 받은 자식 클래스에서 오버라이딩한 메서드가 실행될 것이다.  
 **이처럼 부모 클래스에 기본적인 알고리즘의 흐름을 구현하고 중간에 필요한 처리를 자식 클래스에게 위임하는 디자인 패턴을 템플릿 메소드 패턴이라 한다.**
 
-영화 가격 게산에 참여하는 모든 클래스 사이의 관계를 다이어그램으로 표현하면 다음과 같다.
+영화 가격 계산에 참여하는 모든 클래스 사이의 관계를 다이어그램으로 표현하면 다음과 같다.
 
 ![image](https://user-images.githubusercontent.com/60968342/200832283-c414c382-55e7-4887-ae5a-145330863348.png)
 
@@ -128,6 +128,29 @@
 `DiscountPolicy` 역시 특정 할인 조건에 묶여있지 않다. `DiscountCondition`을 상속받은 어떤 클래스와도 협력이 가능하다. 이는 `DiscountPolicy`와 `DiscountCondition`이 추상적이기 때문에 가능한 것이다. **컨텍스트 독립성(context independency)** 라고 불리는 이 개념은 프레임워크와 같은 유연한 설계가 필수적인 분야에서 그 진가를 발휘한다.
 
 유연성이 필요한 곳에 추상화를 사용하자.
+
+## 추상 클래스와 인터페이스 트레이드오프
+앞의 `NoneDiscountPolicy` 클래스의 코드를 살펴보면 `getDiscountAmount()` 메서드가 어떤 값을 반환하더라도 상관이 없다는 사실을 알 수 있다. 부모 클래스인 `DiscountPolicy`에서 할인 조건이 없을 경우에는 `getDiscountAmount()` 메서드를 호출하지 않기 때문이다. 이는 부모 클래스인 `DiscountPolicy`와 `NoneDiscountPolicy`를 개념적으로 결합시킨다.
+
+이 문제를 해결하는 방법은 **`DiscountPolicy`를 인터페이스로 바꾸고 `NoneDiscountPolicy`가 `DiscountPolicy`의 `getDiscountAmount()`가 아닌 `calculateDiscountAmount()` 오퍼레이션을 오버라이딩하도록 변경하는 것이다.**
+
+```java
+public interface DiscountPolicy {
+    Money calculateDiscountAmount(Screening screening);
+}
+
+public abstract class DefaultDiscountPolicy implements DiscountPolicy {
+    ...
+}
+
+public class NoneDiscountPolicy implements DiscountPolicy {
+
+    @Override
+    Money calculateDiscountAmount(Screening screening) {
+        return Money.ZERO;
+    }
+}
+```
 
 ## 코드 재사용
 상속은 코드를 재사용하기 위해 널리 사용되는 방법이다. 그러나 널리 사용되는 방법이라고 해서 가장 좋은 방법인 것은 아니다. **합성(composition)** 이 더 좋은 방법이다. **합성은 다른 객체의 인스턴스를 자신의 인스턴스 변수로 포함해서 재사용하는 방법을 말한다.**
