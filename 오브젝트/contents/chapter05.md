@@ -230,6 +230,148 @@ DiscountCondition을 암시적인 타입으로 다시 만들어주고 변화하�
 > POLYMORPHISM 패턴은 객체의 타입을 검사해서 타입에 따라 여러 대안들을 수행하는 조건적인 논리를 사용하지 말라고 경고한다. 대신 다형성을 이용해 새로운 변화를 다루기 쉽게 확장하라고 권고한다.
 
 ### 변경으로부터 보호하기
+그림 5.6을 보면 DiscountCondition의 두 서브클래스는 서로 다른 이유로 변경된다는 사실을 알 수 있다. 두 개의 서로 다른 변경이 두 개의 서로 다른 클래스 안으로 캡슐화된다. 새로운 할인 조건을 추가하는 경우 역시 DiscountCondition 이라는 추상화가 구체적인 타입을 캡슐화한다.
 
+Movie의 관점에서 DiscountCondition의 타입이 캡슐화된다는 것은 새로운 DiscountCondition 타입을 추가하더라도 Movie가 영향을 받지 않는다는 것을 의미한다. Movie에 대한 어떤 수정도 필요 없다.
+
+이처럼 변경을 캡슐화하도록 책임을 할당하는 것은 GRASP에서는 **PROTECTED VARIATIONS(변경 보호) 패턴**이라 부른다.
+
+> 📌 PROTECTED VARIATIONS 패턴
+> 
+> 객체, 서브시스템, 그리고 시스템을 어떻게 설계해야 변화와 불안정성이 다른 요소에 나쁜 영향을 미치지 않도록 방지할 수 있을까? 변화가 예상되는 불안정한 지점들을 식별하고 그 주위에 안정된 인터페이스를 형성하도록 책임을 할당하라.
+> 
+> PROTECTED VARIATIONS 패턴은 책임 할당의 관점에서 캡슐화를 설명한 것이다. "설계에서 변하는 것이 무엇인지 고려하고 변하는 개념을 캡슐화하라(GOF94)"라는 객체지향의 오랜 격언은 PROTECTED VARIATIONS 패턴의 본질을 잘 설명해준다. 우리가 캡슐화해야 하는 것은 변경이다. 변경이 될 가능성이 높은가? 그렇다면 캡슐화하라.
+
+**클래스를 변경에 따라 분리하고 인터페이스를 이용해 변경을 캡슐화하는 것은 설계의 결합도와 응집도를 향상시키는 매우 강력한 방법이다. 하나의 클래스가 여러 타입의 행동을 구현하고 있는 것 처럼 보인다면 클래스를 분해하고 PROTECTED VARIATIONS 패턴에 따라 책임을 분산시켜라.** 예측 가능한 변경으로 인해 여러 클래스들이 불안정해진다면 PROTECTED VARIATIONS 패턴에 따라 안정적인 인터페이스 뒤로 변경을 캡슐화하라.
+
+### Movie 클래스 개선하기
+Movie 역시 금액 할인 정책 영화와 비율 할인 정책 영화라는 두 가지 타입을 하나의 클래스 안에 구현하고 있기 때문에 하나 이상의 이유로 변경될 수 있다. 한마디로 응집도가 낮은 것이다.
+
+해결 방법 역시 DiscountCondition 처럼 역할의 개념을 도입해서 협력을 다형적으로 만들면 된다. PROTECTED VARIATIONS 패턴을 사용해 서로 다른 행동을 타입별로 분리하면 다형성의 혜택을 누릴 수 있다.
+
+할인 정책과 할인 정책을 적용하지 않는 경우에 따라 인스턴스 변수와 메서드를 별도로 옮기자. DiscountCondition의 경우에는 역할을 수행할 클래스들 사이에 구현을 공유할 필요가 없었기에 인터페이스를 이용해 구현했다. Movie의 경우에는 구현을 공유할 필요가 있다. 따라서 추상 클래스를 이용해 역할을 구현하자.
+
+```java
+public abstract class Movie {
+
+    private String title;
+    private Duration runningTime;
+
+    @Getter
+    private Money fee;
+    private List<DiscountCondition> discountConditions;
+
+    public Movie(
+            String title,
+            Duration runningTime,
+            Money fee,
+            DiscountCondition... discountConditions
+    ) {
+        this.title = title;
+        this.runningTime = runningTime;
+        this.fee = fee;
+        this.discountConditions = Arrays.asList(discountConditions);
+    }
+
+    public Money calculateMovieFee(Screening screening) {
+        if (isDiscountable(screening)) {
+            return fee.minus(calculateDiscountAmount());
+        }
+
+        return fee;
+    }
+
+    private boolean isDiscountable(Screening screening) {
+        return discountConditions.stream()
+                .anyMatch(condition -> condition.isSatisfiedBy(screening));
+    }
+
+    abstract protected Money calculateDiscountAmount();
+}
+```
+
+변경 전의 Movie 클래스와 비교해서 `discountAmount`, `discountPercent`와 이 인스턴스 변수들을 사용하는 메서드들이 삭제됐다는 것을 알 수 있다. 이 인스턴스 변수들과 메서드들을 Movie 역할을 수행하는 적절한 자식 클래스로 옮길 것이다.
+
+```java
+public class AmountDiscountMovie extends Movie {
+
+    private Money discountAmount;
+
+    public AmountDiscountMovie(
+            String title,
+            Duration runningTime,
+            Money fee,
+            Money discountAmount,
+            DiscountCondition... discountConditions
+    ) {
+        super(title, runningTime, fee, discountConditions);
+        this.discountAmount = discountAmount;
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return discountAmount;
+    }
+}
+
+public class PercentDiscountMovie extends Movie {
+
+    private double percent;
+
+    public PercentDiscountMovie(
+            String title,
+            Duration runningTime,
+            Money fee,
+            double percent,
+            DiscountCondition... discountConditions
+    ) {
+        super(title, runningTime, fee, discountConditions);
+        this.percent = percent;
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return getFee().times(percent);
+    }
+}
+
+public class NoneDiscountMovie extends Movie {
+
+    public NoneDiscountMovie(
+            String title,
+            Duration runningTime,
+            Money fee,
+            DiscountCondition... discountConditions
+    ) {
+        super(title, runningTime, fee, discountConditions);
+    }
+
+    @Override
+    protected Money calculateDiscountAmount() {
+        return Money.ZERO;
+    }
+}
+```
+
+할인 정책의 종류에 따라 할인 금액을 계산하는 로직이 달라야 한다. 이를 위해 `calculateDiscountAmount` 메서드를 추상 메서드로 선언함으로써 서브클래스들이 할인 금액을 계산하는 방식을 원하는대로 오버라이딩할 수 있게 했다.
+
+<img width="704" alt="image" src="https://user-images.githubusercontent.com/60968342/233586183-b8e2632e-076c-45f6-914e-d31ce1482e95.png">
+
+모든 구현은 끝났다. 위 그램 처럼 모든 클래스의 내부 구현은 캡슐화돼 있고 모든 클래스는 변경의 이유를 오직 하나씩만 가진다. 각 클래스는 응집도가 높고 다른 클래스와 최대한 느슨하게 결합돼 있다. 클래스는 작고 오직 한 가지 일만 수행한다. 책임은 적절하게 분배돼 있다. 이것이 책임을 중심으로 협력을 설계할 때 얻을 수 있는 혜택이다.
+
+결론은 데이터가 아닌 책임을 중심으로 설계하라는 것이다. 객체에게 중요한 것은 상태가 아니라 행동이다. 객체지향 설계의 기본은 책임과 협력에 초점을 맞추는 것이다.
+
+### 변경과 유연성
+설계를 주도하는 것은 변경이다. 개발자로서 변경에 대비할 수 있는 두 가지 방법이 있다.
+- 코드를 이해하고 수정하기 쉽도록 최대한 단순하게 설계하는 것
+- 코드를 수정하지 않고도 변경을 수용할 수 있도록 코드를 더 유연하게 만드는 것
+
+만약 영화에 설정된 할인 정책을 실행 중에 변경할 수 있어야 한다는 요구사항이 추가된다면, 현재의 설계에선 할인 정책을 구현하기 위해 **상속**을 이용하고 있기 때문에 실행 중에 영화의 할인 정책을 변경하기 위해서는 새로운 인스턴스를 생성한 후 필요한 정보를 복사해야 한다. 또한 변경 전후의 인스턴스가 개념적으로는 동일한 객체를 가리키지만 물리적으로 서로 다른 객체이기 때문에 식별자의 관점에서 혼란스러울 수 있다.
+
+해결 방법은 상속 대신 **합성을 사용하는 것**이다. Movie의 상속 계층 안에 구현된 할인 정책을 독립적인 DiscountPolicy로 분리한 후 Movie에 합성시키면 유연한 설계가 완성된다.
+
+<img width="704" alt="image" src="https://user-images.githubusercontent.com/60968342/233587730-0fbbb4c7-1166-4430-8b2e-2d26a8d1bfc9.png">
+
+**유연성은 의존성 관리의 문제다. 요소들 사이의 의존성의 정도가 유연성의 정도를 결정한다.** 유연성의 정도에 따라 결합도를 조절할 수 있는 능력은 객체지향 개발자가 갖춰야 하는 중요한 기술 중 하나다.
 
 ## 책임 주도 설계의 대안
