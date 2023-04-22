@@ -7,7 +7,7 @@
 - [3장. 역할, 책임, 협력](./contents/chapter03.md)
 - [4장. 설계 품질과 트레이드오프](./contents/chapter04.md)
 - [5장. 책임 할당하기](./contents/chapter05.md)
-- 6장. 메시지와 인터페이스
+- [6장. 메시지와 인터페이스](./contents/chapter06.md)
 - 7장. 객체 분해
 - 8장. 의존성 관리하기
 - 9장. 유연한 설계
