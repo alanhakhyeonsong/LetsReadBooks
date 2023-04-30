@@ -9,7 +9,7 @@
 - [5장. 책임 할당하기](./contents/chapter05.md)
 - [6장. 메시지와 인터페이스](./contents/chapter06.md)
 - [7장. 객체 분해](./contents/chapter07.md)
-- 8장. 의존성 관리하기
+- [8장. 의존성 관리하기](./contents/chapter08.md)
 - 9장. 유연한 설계
 - 10장. 상속과 코드 재사용
 - 11장. 합성과 유연한 설계
