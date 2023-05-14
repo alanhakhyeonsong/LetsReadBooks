@@ -70,7 +70,7 @@
 
 API는 서비스에 구현된 비즈니스 로직과 소통하는 어댑터를 이용하여 구현한다. 작업 어댑터(operations adapter)는 비즈니스 로직을 호출하고 이벤트 어댑터(events adapter)는 비즈니스 로직이 내어 준 이벤트를 발행한다.
 
-![](https://velog.velcdn.com/images/songs4805/post/0eb1fd38-9d93-4342-af0f-87ecd48424f8/image.png)
+![](https://velog.velcdn.com/images/songs4805/post/f15ff944-166e-4eeb-b9d4-4fa663eeeb93/image.png)
 
 ### 느슨한 결합
 서비스는 구현 코드를 감싼 API를 통해서만 상호 작용하므로 클라이언트에 영향을 끼치지 않고 서비스 내부 구현 코드를 바꿀 수 있다. 느슨하게 결합된 서비스는 유지보수성, 테스트성을 높이고 애플리케이션 개발 시간을 단축하는 효과가 있다. 무엇보다 개발자가 서비스를 이해하고, 변경하고, 테스트하기가 더 쉽다.
