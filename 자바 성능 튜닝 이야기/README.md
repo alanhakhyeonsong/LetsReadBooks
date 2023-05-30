@@ -8,7 +8,7 @@
 - Story 5. 지금까지 사용하던 for 루프를 더 빠르게 할 수 있다고?
 - Story 6. static 제대로 한번 써 보자.
 - Story 7. 클래스 정보, 어떻게 알아낼 수 있나?
-- Story 8. synchronization는 제대로 알고 써야 한다.
+- [Story 8. synchronization는 제대로 알고 써야 한다.](./contents/chapter08.md)
 - Story 9. IO에서 발생하는 병목 현상
 - Story 10. 로그는 반드시 필요한 내용만 찍자.
 - Story 11. JSP와 서블릿, Spring에서 발생할 수 있는 여러 문제점
