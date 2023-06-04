@@ -94,3 +94,82 @@ FGC(Full GC)는 거의 5~10초에 한 번씩 발생하는 것을 볼 수 있다.
 JVM에 있는 코드에 `System.gc()` 메서드가 있기 때문에 해당 생성자가 무차별적으로 생성될 경우 GC가 자주 발생하고 성능에 영향을 줄 수 밖에 없다. 따라서 이 `DirectByteBuffer` 객체를 생성할 때는 매우 신중하게 접근해야만 하며, 가능하다면 싱글톤 패턴을 사용하는 것을 권장한다.
 
 ## lastModified() 메서드의 성능 저하
+JDK 6까진 Java에서 파일이 변경되었는지를 확인하기 위해 `File` 클래스에 있는 `lastModified()`라는 메서드를 사용해왔다. 이 메서드를 사용하면 최종 수정된 시간을 밀리초 단위로 제공한다. 그런데 이 메서드는 처리되는 절차가 조금 복잡하다.
+
+1. `System.getSecurityManager()` 메서드를 호출하여 `SecurityManager` 객체를 얻어옴
+2. 만약 null이 아니면 `SecurityManager` 객체의 `checkRead()` 메서드 수행
+3. `File` 클래스 내부에 있는 `FileSystem`이라는 클래스의 객체에서 `getLastModifiedTime()` 메서드를 수행하여 결과 리턴
+
+각각의 호출되는 메서드에서 호출되는 메서드들이 매우 많으며 이는 OS마다 상이하다.
+
+```java
+@State(Scope.Thread)
+@BenchemarkMode({ Mode.AverageTime })
+@OutputTimeUnit(TimeUnit.MICROSECONDS)
+public class IOPerformance {
+    long lastModifiedTime;
+
+    @GenerateMicroBenchmark
+    public void lastModifed() {
+        File file = new File("C:\\Temp\\setting.properties");
+        lastModifiedTime = file.lastModified();
+    }
+}
+```
+
+아무런 내용도 없는 `setting.properties`라는 파일을 만들고, 그 파일의 최종 수정 시간을 얻는 작업을 반복하는데 이 작업을 반복하는 형태의 서비스를 제공한다면 문제가 커진다. IO 작업을 수반하기 때문에 OS의 IO 영향을 많이 받을 수 밖에 없다.
+
+JDK 7부터 새로운 개념의 IO 처리가 나왔는데 `WatcherService`에 대해 알아보자.
+
+```java
+public class WatcherThread extends Thread {
+    String dirName;
+
+    public WatcherThread(String dirName) {
+        this.dirName = dirName;
+    }
+
+    public void run() {
+        System.out.println("Watcher is started");
+        fileWatcher();
+        System.out.println("Watcher is ended");
+    }
+
+    public void fileWatcher() {
+        try {
+            Path dir = Paths.get(dirName); // 1
+            WatchService watcher = FileSystems.getDefault().newWatchService(); // 2
+            dir.register(watcher, ENTRY_CREATE, ENTRY_DELETE, ENTRY_MODIFY); // 3
+            WatchKey key;
+
+            for (int i = 0; i < 4; i++) {
+                key = watcher.take(); // 4
+                String watchedTime = new Date().toString();
+                List<WatchEvent<?>> eventList = key.pollEvents(); // 5
+                for (WatchEvent<?> event : eventList) {
+                    Path name = (Path) event.context();
+                    if (event.kind() == ENTRY_CREATE) {
+                        // Do something when created
+                    } else if (event.kind() == ENTRY_DELETE) {
+                        // Do something when deleted
+                    } else if (event.kind() == ENTRY_MODIFY) {
+                        // Do something when modified
+                    }
+                }
+                key.reset(); // 6
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+}
+```
+
+1. `Path` 객체를 생성해서 모니터링할 디렉터리를 지정
+2. `WatchService` 클래스의 `watcher`라는 객체를 생성
+3. `dir`이라는 `Path` 객체의 `register`라는 메서드를 활용하여 파일이 생성, 수정, 삭제되는 이벤트를 처리하도록 지정
+4. `watcher` 객체의 `take()` 메서드를 호출하면 해당 디렉터리에 변경이 있을 때까지 기다리다가, 작업이 발견되면 `key`라는 `WatchKey` 클래스의 객체가 생성된다. 마치 `Socket` 관련 객체에 `accept()` 메서드처럼 어떤 이벤트가 생길때까지 낚시 줄을 던져 놓고 기다리고 있는 상황이라 생각하면 된다.
+5. 파일에 변화가 생겼다면 이벤트의 목록을 가져온다.
+6. 이벤트를 처리한 다음 `key` 객체를 reset
+
+이와 같이 JDK 7을 사용하는 환경에선 해당 파일이 변경되었는지 주기적으로 확인할 필요가 없어졌다. `Watch` 관련 클래스만 잘 활용해도 파일을 쉽게 모니터링할 수 있기 때문이다.
