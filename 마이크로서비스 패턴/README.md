@@ -4,7 +4,7 @@
 - [2장. 분해 전략](./contents/chapter02.md)
 - [3장. 프로세스 간 통신](./contents/chapter03.md)
 - [4장. 트랜잭션 관리: 사가](./contents/chapter04.md)
-- 5장. 비즈니스 로직 설계
+- [5장. 비즈니스 로직 설계](./contents/chapter05.md)
 - 6장. 비즈니스 로직 개발: 이벤트 소싱
 - 7장. 마이크로서비스 쿼리 구현
 - 8장. 외부 API 패턴
