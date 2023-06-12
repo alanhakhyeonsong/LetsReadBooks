@@ -36,7 +36,7 @@
 
 ### Part 6 함수형 프로그래밍과 자바 진화의 미래
 
-- Chapter 18 - 함수형 관점으로 생각하기
+- [Chapter 18 - 함수형 관점으로 생각하기](./contents/chapter18.md)
 - Chapter 19 - 함수형 프로그래밍 기법
 - Chapter 20 - OOP와 FP의 조화 : 자바와 스칼라 비교
 - Chapter 21 - 결론 그리고 자바의 미래
