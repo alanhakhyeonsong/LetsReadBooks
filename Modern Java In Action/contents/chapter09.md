@@ -22,6 +22,7 @@ Runnable r3 = () -> {
     int a = 2; // 컴파일 에러(위 2번 사항 참고)
     System.out.println(a);
 };
+
 Runnable r4 = new Runnable() {
     public void run() {
         int a = 2; // 모든 것이 잘 작동함.
@@ -42,7 +43,7 @@ doSomething(new Task() { // 익명 클래스 전달
         System.out.println("Danger danger!!");
     }
 });
-doSomething(() -> System.out.println("Danger danger!!")); // 콘텍스트에 따른 모호함 발생
+doSomething(() -> System.out.println("Danger danger!!")); // 콘텍스트에 따른 모호함 발생
 
 doSomething((Task)() -> System.out.println("Danger danger!!")); // 명시적 형변환을 이용해서 모호함 제거
 ```
