@@ -19,7 +19,7 @@
 
 - [Chapter 8 - 컬렉션 API 개선](./contents/chapter08.md)
 - [Chapter 9 - 리팩터링, 테스팅, 디버깅](./contents/chapter09.md)
-- Chapter 10 - 람다를 이용한 도메인 전용 언어
+- [Chapter 10 - 람다를 이용한 도메인 전용 언어](./contents/chapter10.md)
 
 ### Part 4 매일 자바와 함께
 
