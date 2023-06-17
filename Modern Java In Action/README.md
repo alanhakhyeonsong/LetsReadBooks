@@ -30,7 +30,7 @@
 
 ### Part 5 개선된 자바 동시성
 
-- Chapter 15 - CompletableFuture와 리액티브 프로그래밍 컨셉의 기초
+- [Chapter 15 - CompletableFuture와 리액티브 프로그래밍 컨셉의 기초](./contents/chapter15.md)
 - Chapter 16 - CompletableFuture : 안정적 비동기 프로그래밍
 - Chapter 17 - 리액티브 프로그래밍
 
