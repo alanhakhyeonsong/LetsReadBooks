@@ -32,7 +32,7 @@
 
 - [Chapter 15 - CompletableFuture와 리액티브 프로그래밍 컨셉의 기초](./contents/chapter15.md)
 - [Chapter 16 - CompletableFuture : 안정적 비동기 프로그래밍](./contents/chapter16.md)
-- Chapter 17 - 리액티브 프로그래밍
+- [Chapter 17 - 리액티브 프로그래밍](./contents/chapter17.md)
 
 ### Part 6 함수형 프로그래밍과 자바 진화의 미래
 
