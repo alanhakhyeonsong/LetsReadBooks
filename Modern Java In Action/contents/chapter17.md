@@ -68,6 +68,48 @@ public interface Processor<T, R> extends Subscriber<T>, Publisher<R> { }
 - `Subscriber`는 요소를 받아 처리할 수 있음을 `Publisher`에게 알려야 한다. 이런 방식으로 `Subscriber`는 `Publisher`에게 역압력을 행사할 수 있고 `Subscriber`가 관리할 수 없이 너무 많은 요소를 받는 일을 피할 수 있다. 더욱이 `onComplete`나 `onError` 신호를 처리하는 상황에서 `Subscriber`는 `Publisher`나 `Subscription`의 어떤 메서드도 호출할 수 없으며 `Subscription`이 취소되었다고 가정해야 한다. 마지막으로 `Subscriber`는 `Subscription.request()` 메서드 호출이 없어도 언제든 종료 시그널을 받을 준비가 되어있어야 하며 `Subscription.cancel()`이 호출된 이후에라도 한 개 이상의 `onNext`를 받을 준비가 되어 있어야 한다.
 - `Publisher`와 `Subscriber`는 정확하게 `Subscription`을 공유해야 하며 각각이 고유한 역할을 수행해야 한다. 그러려면 `onSubscribe`와 `onNext` 메서드에서 `Subscriber`는 `request` 메서드를 동기적으로 호출할 수 있어야 한다. 표준에서는 `Subscription.cancel()` 메서드는 몇 번을 호출해도 한 번 호출한 것과 같은 효과를 가져야 하며, 여러 번 이 메서드를 호출해도 다른 추가 호출에 별 영향이 없도록 스레드에 안전해야 한다고 명시한다. 같은 `Subscriber` 객체에 다시 가입하는 것은 권장하지 않지만 이런 상황에서 예외가 발생해야 한다고 명세서가 강제하진 않는다. 이전의 취소된 가입이 영구적으로 적용되었다면 이후의 기능에 영향을 주지 않을 가능성도 있기 때문이다.
 
+## 리액티브 라이브러리 RxJava 사용하기
+RxJava는 Java로 리액티브 애플리케이션을 구현하는 데 사용하는 라이브러리다. RxJava는 넷플릭스의 Reactive Extensions(Rx) 프로젝트의 일부로 시작되었다. 더 자세한 설명은 [ReactiveX](https://reactivex.io/intro.html) 공식 홈페이지를 참고하길 바란다.
+
+### Observable 만들고 사용하기
+`Observable`, `Flowable` 클래스는 다양한 종류의 리액티브 스트림을 편리하게 만들 수 있도록 여러 팩토리 메서드를 제공한다. (`Observable`과 `Flowable`은 `Publisher`를 구현하므로 팩토리 메서드는 리액티브 스트림을 만든다)
+
+`just()`와 `interval()` 팩토리 메서드를 사용하면 요소를 직접 지정해 이를 방출하도록 지정할 수 있다.
+
+```java
+Observable<String> strings = Observable.just("first", "second");
+
+Observable<Long> onePerSec = Observable.interval(1, TimeUnit.SECONDS);
+```
+
+RxJava에서 `Observable`이 플로 API의 `Publisher` 역할을 하며 `Observer`는 `Flow`의 `Subscriber` 인터페이스 역할을 한다. RxJava의 `Observer` 인터페이스는 Java 9의 `Subscriber`와 같은 메서드를 정의하며 `onSubscribe` 메서드가 `Subscription` 대신 `Disposable` 인수를 갖는다는 점만 다르다. `Observable`은 역압력을 지원하지 않으므로 `Subscription`의 `request` 메서드를 포함하지 않는다.
+
+```java
+public interface Observer<T> {
+	void onSubscribe(Disposable d);
+	void onNext(T t);
+	void onError(Throwable t);
+	void onComplete();
+}
+```
+
+`Observer` 클래스는 `Observable`을 구독한다. Java 9 네이티브 플로 API와 동일한 역할을 하지만 많은 오버로드된 기능을 제공하기에 더 유연하다. 네 개의 메서드를 모두 구현해야 하는 `Flow.Subscriber`와 달리 `onNext`의 시그니처에 해당하는 람다 표현식을 전달해 `Observable`을 구독할 수 있다.
+
+```java
+// 0에서 시작해 1초 간격으로 long형식의 값을 무한으로 증가 시키며 값을 방출하는 Observable
+Observable<Long> onePerSec = Observable.interval(1 ,TimeUnit.SECONDS);
+
+// 람다 표현식으로 onNext 메서드만 구현하여 구독
+onePerSec.subscribe(i -> System.out.println(TempInfo.fetch("New York"));
+```
+
+필요한 옵저버가 있다면 `Observer` 인터페이스를 구현하여 쉽게 만들고 팩터리 메서드를 이용하여 만든 `Observable`에 쉽게 구독시킬 수 있다.
+
+### Observable을 변환하고 합치기
+Java 9 플로 API의 `Flow.Processor`는 한 스트림을 다른 스트림의 입력으로 사용할 수 있었다. 하지만 스트림을 합치고, 만들고, 거스는 등의 복잡한 작업을 구현하기는 매우 어려운 일이다. RxJava의 `Observable` 클래스는 앞서 언급한 복잡한 작업에 대해 쉽게 처리할 수 있는 다양한 기능들을 제공한다.
+
+이런 함수들을 documents의 설명으로만은 이해하기 상당히 어렵기에 마블 다이어그램이라는 시각적 방법을 이용해 이해를 돕는다. rxmarbles.com 사이트는 RxJava의 `Observables`의 스트림의 요소 위치를 직접 옮겨가며 결과를 확인 메서드의 동작을 마블 다이어그램으로 확인할 수 있도록 도와준다. documents와 함께 참고하자.
+
 ## 📌 정리
 - 리액티브 프로그래밍의 기초 사상은 이미 20에서 30년 전에 수립되었지만 데이터 처리량과 샤용자 기대치 덕분에 최근에서야 인기를 얻고 있다.
 - 리액티브 소프트웨어가 지녀야 할 네 가지 관련 특징(반응성, 회복성, 탄력성, 메시지 주도)을 서술하는 리액티브 매니페스토가 리액티브 프로그래밍 사상을 공식화한다.
