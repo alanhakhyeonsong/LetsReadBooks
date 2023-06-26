@@ -5,7 +5,7 @@
 - [2장. 의존성 역전하기](./contents/chapter02.md)
 - [3장. 코드 구성하기](./contents/chapter03.md)
 - [4장. 유스케이스 구현하기](./contents/chapter04.md)
-- 5장. 웹 어댑터 구현하기
+- [5장. 웹 어댑터 구현하기](./contents/chapter05.md)
 - 6장. 영속성 어댑터 구현하기
 - 7장. 아키텍처 요소 테스트하기
 - 8장. 경계 간 매핑하기
