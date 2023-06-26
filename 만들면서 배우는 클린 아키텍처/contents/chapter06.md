@@ -225,8 +225,8 @@ class AccountPersistenceAdapter implements
 
 	@Override
 	public Account loadAccount(
-					Account.AccountId accountId,
-					LocalDateTime baselineDate) {
+			Account.AccountId accountId,
+			LocalDateTime baselineDate) {
 
 		AccountJpaEntity account =
 				accountRepository.findById(accountId.getValue())
