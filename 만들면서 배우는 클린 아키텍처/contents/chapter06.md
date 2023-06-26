@@ -225,7 +225,7 @@ class AccountPersistenceAdapter implements
 
 	@Override
 	public Account loadAccount(
-			Account.AccountId accountId,
+			AccountId accountId,
 			LocalDateTime baselineDate) {
 
 		AccountJpaEntity account =
