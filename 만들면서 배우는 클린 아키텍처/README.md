@@ -6,7 +6,7 @@
 - [3장. 코드 구성하기](./contents/chapter03.md)
 - [4장. 유스케이스 구현하기](./contents/chapter04.md)
 - [5장. 웹 어댑터 구현하기](./contents/chapter05.md)
-- 6장. 영속성 어댑터 구현하기
+- [6장. 영속성 어댑터 구현하기](./contents/chapter06.md)
 - 7장. 아키텍처 요소 테스트하기
 - 8장. 경계 간 매핑하기
 - 9장. 애플리케이션 조립하기
