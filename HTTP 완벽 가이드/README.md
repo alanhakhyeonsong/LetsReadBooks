@@ -4,7 +4,7 @@
 ### 1. HTTP: 웹의 기초
 - [1장. HTTP 개관](./contents/chapter01.md)
 - [2장. URL과 리소스](./contents/chapter02.md)
-- 3장. HTTP 메시지
+- [3장. HTTP 메시지](./contents/chapter03.md)
 - 4장. 커넥션 관리
 
 ### 2. HTTP 아키텍처
