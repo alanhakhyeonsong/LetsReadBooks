@@ -12,4 +12,4 @@
 - [9장. 애플리케이션 조립하기](./contents/chapter09.md)
 - [10장. 아키텍처 경계 강제하기](./contents/chapter10.md)
 - [11장. 의식적으로 지름길 사용하기](./contents/chapter11.md)
-- 12장. 아키텍처 스타일 결정하기
+- [12장. 아키텍처 스타일 결정하기](./contents/chapter12.md)
