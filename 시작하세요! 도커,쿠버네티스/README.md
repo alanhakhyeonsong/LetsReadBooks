@@ -7,7 +7,7 @@
 - 5장. 쿠버네티스 설치
 - [6장. 쿠버네티스 시작하기](./contents/chapter06.md)
 - [7장. 쿠버네티스 리소스의 관리와 설정](./contents/chapter07.md)
-- 8장. 인그레스
+- [8장. 인그레스](./contents/chapter08.md)
 - 9장. 퍼시스턴트 볼륨(PV)과 퍼시스턴트 볼륨 클레임(PVC)
 - 10장. 보안을 위한 인증과 인가 - ServiceAccount와 RBAC
 - 11장. 애플리케이션 배포를 위한 고급 설정
