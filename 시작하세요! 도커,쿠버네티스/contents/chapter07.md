@@ -169,3 +169,129 @@ kubernetes
 여기서 알아둬야 할 것은 컨피그맵의 모든 키-값 쌍 데이터가 마운트됐으며, 파일 이름은 키의 이름과 같다는 것이다.
 
 원하는 키-쌍 데이터만 선택해서 포드에 파일로 가져올 수도 있다.
+
+```yaml
+# selective-volume-configmap.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: configmap-volume-pod
+spec:
+  containers:
+    - name: my-container
+      image: busybox
+      args: [ "tail", "-f", "/dev/null" ]
+      volumeMounts:
+      - name: configmap-volume
+        mountPath: /etc/config  # 마운트되는 위치는 변경되지 않았다.
+
+  volumes:
+    - name: configmap-volume
+      configMap:
+        name: start-k8s
+        items:                  # 컨피그맵에서 가져올 키-값의 목록을 나열한다.
+        - key: k8s              # k8s라는 키에 대응하는 값을 가져온다.
+          path: k8s_fullname    # 최종 파일 이름은 k8s_fullname이 된다.
+```
+
+이전 yaml 파일과 비교하여 `volumes` 항목이 약간 달라졌다.
+
+- `items` 항목: 컨피그맵에서 가져올 키-값의 목록을 의미하며, k8s라는 키만 가져오도록 명시했다.
+- `path` 항목: 최종적으로 디렉터리에 위치할 파일의 이름을 입력하는 항목으로, `k8s_fullname`이라는 값을 입력했다.
+
+위 예시에선 `k8s`라는 키에 해당하는 값이 `k8s_fullname`이라는 파일로 포드 내부에 존재할 것이다.
+
+### 파일로부터 컨피그맵 생성하기
+컨피그맵을 볼륨으로 포드에 제공할 땐 대부분 설정 파일 그 자체를 컨피그맵으로 사용하는 경우가 많다. 예를 들어 Nginx의 `nginx.conf` 또는 MySQL의 `mysql.conf`의 내용을 통째로 컨피그맵에 저장한 뒤 이를 볼륨 파일로 포드 내부에 제공하면 좀 더 효율적인 설정 관리가 가능해질 것이다. 이러한 경우를 위해 쿠버네티스는 컨피그맵을 파일로부터 생성하는 기능 또한 제공한다.
+
+`kubectl create configmap <컨피그맵 이름> --from-file <파일 이름> ...` 과 같이 `--from-file` 옵션을 여러 번 사용해 여러 개의 파일을 컨피그맵에 저장할 수 있다.
+
+`--from-file` 옵션에서 별도의 키를 지정하지 않으면 파일 이름이 키로, 파일의 내용이 값으로 저장된다.
+
+파일로부터 컨피그맵을 생성할 때는 파일 내용에 해당하는 키의 이름을 직접 지정할 수도 있다.  
+ex) `kubectl create configmap index-file-customkey --from-file myindex=index.html`
+
+또는 `--from-env-file` 옵션으로 여러 개의 키-값 형태의 내용으로 구성된 설정 파일을 한꺼번에 컨피그맵으로 가져올 수도 있다.
+
+```bash
+$ kubectl create configmap from-envfile --from-env-file multiple-keyvalue.env
+configmap/from-envfile created
+
+$ kubectl get cm from-envfile -o yaml
+apiVersion: v1
+data:
+  mykey1: myvalue1
+  mykey2: myvalue2
+  mykey3: myvalue3
+...
+```
+
+컨피그맵은 반드시 명령어를 통해 생성해야 하는 것은 아니다. `kubectl create` 명령어에서 `--dry-run`, `-o yaml` 옵션을 사용하면 컨피그맵을 생성하지 않은 채로 yaml 파일의 내용을 출력할 수 있다. 출력된 내용을 yaml 파일로 사용하면 컨피그맵 또한 yaml 파일로 배포해 사용할 수 있다.
+
+```bash
+$ kubectl create configmap my-configmap --from-literal mykey=myvalue --dry-run -o yaml > my-configmap.yaml
+
+$ kubectl apply -f my-configmap.yaml
+configmap/my-configmap created
+```
+
+참고로, `dry run`이란 특정 작업의 실행 가능 여부를 검토하는 명령어 또는 API를 의미한다. 이때 실제로 쿠버네티스 리소스를 생성하진 않는다.
+
+### 시크릿(Secret)
+**시크릿은 SSH 키, 비밀번호 등과 같이 민감한 정보를 저장하기 위한 용도로 사용되며, 네임스페이스에 종속되는 쿠버네티스 오브젝트이다.** 시크릿과 컨피그맵은 사용 방법이 매우 비슷하다. 하지만 시크릿은 민감한 정보를 저장하기 위해 컨피그맵보다 좀 더 세분화된 사용 방법을 제공한다.
+
+```bash
+$ kubectl create secret generic my-password --from-literal password=1q2w3e4r
+
+secret/my-password created
+
+$ echo mypassword > pw1 && echo yourpassword > pw2
+$ kubectl create secret generic our-password --from file pw1 --from file pw2
+
+secret/our-password created
+```
+
+`kubectl get secret my-password -o yaml` 명령어를 실행해 시크릿의 내용을 확인해보면 컨피그맵과 비슷한 형식으로 데이터가 저장됐지만, 키-값 쌍에서 값에 해당하는 부분이 base64로 인코딩 된 형태로 저장되어있다. 이는 쿠버네티스가 기본적으로 base64로 값을 인코딩하기 때문이다.
+
+이렇게 생성된 시크릿은 컨피그맵과 비슷하게 사용할 수 있다. 시크릿의 키-값 데이터를 포드의 환경 변수로 설정할 수도 있고, 특정 경로의 파일로 포드 내에 마운트할 수도 있다.
+
+이미지 레지스트리 접근을 위해 `docker-registry` 타입의 시크릿을 사용할수도 있다. 이전에 생성한 시크릿은 모두 `Opaque` 타입으로 설정돼있다. 이는 사용자가 정의하는 데이터를 저장할 수 있는 일반적인 목적의 시크릿이다.
+
+한편, 비공개 레지스트리에 접근할 때 사용하는 인증 설정 시크릿을 만들 수도 있다. **쿠버네티스의 디플로이먼트 등을 이용해 포드를 생성할 때, yaml 파일에 정의된 이미지가 로컬에 존재하지 않으면 쿠버네티스는 자동으로 이미지를 받아온다.** 쿠버네티스는 `docker login` 명령어 대신 레지스트리의 인증 정보를 저장하는 별도의 시크릿을 생성해 사용한다.
+
+- `docker login` 명령어로 로그인에 성공했을 때 도커 엔진이 자동으로 생성하는 `~/.docker/config.json` 파일을 사용하는 방법  
+ex) `kubectl create secret generic registry-with-auth --from-file=.dockerconfigjson=/root/.docker/config.json --type=kubernetes.io/dockerconfigjson`
+- 시크릿을 생성하는 명령어에서 직접 로그인 인증 정보를 명시하는 방법  
+ex) `kubectl create secret generic registry-with-auth-by-cmd --docker-username=test123 --docker-password=1q2w3e4r`
+
+참고로 `--docker-server`는 필수 옵션이 아니다. 이 옵션을 사용하지 않으면 기본적으로 도커 허브를 사용하도록 설정되지만, 다른 사설 레지스트리를 사용하려면 `--docker-server` 옵션에 해당 서버의 주소 또는 도메인 이름을 입력하면 된다.
+
+위 명령어로 생성된 시크릿은 `kubernetes.io/dockerconfigjson`이라는 타입으로 설정된다. 이 시크릿은 디플로이먼트 또는 포드 등에서 사설 레지스트리로부터 이미지를 받아올 때 사용할 수 있다.  
+예를 들어, 도커 허브의 프라이빗 저장소에 저장된 이미지를 통해 포드를 생성하려면 yaml 파일에서 `imagePullSecret` 항목을 정의하면 된다.
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+...
+
+spec:
+  containers:
+  - name: test-container
+    image: <이미지 이름>
+  imagePullSecrets:
+  - name: registry-auth-registry
+```
+
+또한 시크릿은 TLS 연결에 사용되는 공개키, 비밀키 등을 쿠버네티스에 자체적으로 저장할 수 있도록 `tls` 타입을 지원한다. 포드 내부의 애플리케이션이 보안 연결을 위해 인증서나 비밀키 등을 가져와야 할 때 시크릿의 값을 포드에 제공하는 방식으로 사용할 수 있다.
+
+보안 연결에 사용되는 키 페어가 미리 준비돼 있다면 `kubectl create secret tls` 명령어로 쉽게 생성할 수 있다.
+
+### 컨피그맵이나 시크릿을 업데이트해 애플리케이션의 설정값 변경하기
+애플리케이션의 설정값을 변경해야 한다면 컨피그맵이나 시크릿의 값을 `kubectl edit` 명령어로 수정해도 되고, yaml 파일을 변경한 뒤 다시 `kubectl apply` 명령어를 사용해도 된다. `kubectl patch` 명령어 역시 사용할 수 있다.
+
+환경 변수로 포드 내부에 설정값을 제공하는 방법으로 설정된 값은 컨피그맵이나 시크릿의 값을 변경해도 자동으로 재설정되지 않으며, 디플로이먼트의 포드를 다시 생성해야만 한다.
+
+볼륨 파일로 포드 내부에 마운트하는 방법으로 설정하면 컨피그맵이나 시크릿을 변경하면 파일의 내용 또한 자동으로 갱신된다. **단, 포드 내부에 마운트된 설정 파일이 변경됐다고 해서 포드에서 실행 중인 애플리케이션의 설정이 자동으로 변경되는 것은 아니다.** 업데이트된 설정값을 포드 내부의 프로세스가 다시 로드하려면 별도의 로직을 직접 구현해야 한다.
+
+- 변경된 파일을 다시 읽어들이도록 컨테이너의 프로세스에 별도의 시그널을 보내는 사이드카 컨테이너를 포드에 포함시킨다.
+- 애플리케이션의 소스코드 레벨에서 쿠버네티스 API를 통해 컨피그맵, 시크릿의 데이터 변경에 대한 알림을 받은 뒤, 자동으로 리로드하는 로직을 구현한다.
