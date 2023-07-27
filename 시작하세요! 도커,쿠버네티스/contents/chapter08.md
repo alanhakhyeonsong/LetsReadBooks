@@ -52,3 +52,93 @@ spec:
 **Nginx 인그레스 컨트롤러를 설치하면 자동으로 생성되는 서비스는 `LoadBalancer` 타입이다.**
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/cf99fece-bc0a-40e0-81e5-50788d0151e0)
+
+만약 가상 머신철머 클라우드가 아닌 환경에서 인그레스를 테스트하고 싶다면 `NodePort` 타입의 서비스를 생성해 사용해도 된다. 이 경우, 각 노드의 랜덤한 포트로 Nginx 인그레스 컨트롤러에 접근할 수 있다.
+
+```yaml
+# ingress-nginx-svc-nodeport.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: ingress-nginx-controller-nodeport
+  namespace: ingress-nginx
+spec:
+  ports:
+  - name: http
+    nodePort: 31000
+    port: 80
+    protocol: TCP
+    targetPort: http
+  - name: https
+    nodePort: 32000
+    port: 443
+    protocol: TCP
+    targetPort: https
+  selector:
+    app.kubernetes.io/component: controller
+    app.kubernetes.io/instance: ingress-nginx
+    app.kubernetes.io/name: ingress-nginx
+  type: NodePort
+```
+
+전체 구조를 그림으로 나타내면 다음과 같다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/a2faa0bc-46f9-4423-a54e-165a96319922)
+
+인그레스를 사용하는 방법을 순서대로 나열하면 다음과 같다.
+1. 공식 Github에서 제공되는 yaml 파일로 Nginx 인그레스 컨트롤러를 생성한다.
+2. Nginx 인그레스 컨트롤러를 외부로 노출하기 위한 서비스를 생성한다.
+3. 요청 처리 규칙을 정의하는 인그레스 오브젝트를 생성한다.
+4. Nginx 인그레스 컨트롤러로 들어온 요청은 인그레스 규칙에 따라 적절한 서비스로 전달된다.
+
+위 과정 중 3번에서 인그레스를 생성하면 인그레스 컨트롤러는 자동으로 인그레스를 로드해 Nginx 웹 서버에 적용한다. 이를 위해 Nginx 인그레스 컨트롤러는 항상 인그레스 리소스의 상태를 지켜보고 있으며, 기본적으로 모든 네임스페이스의 인그레스 리소스를 읽어와 규칙을 적용한다.
+
+## 인그레스의 세부 기능: annotation을 이용한 설정
+인그레스는 yaml 파일의 주석 항목을 정의함으로써 다양한 옵션을 사용할 수 있다. 이전에 사용한 두 개의 주석 항목을 다시 살펴보자.
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-example
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+spec:
+...
+```
+
+- `kubernetes.io/ingress.class`: 해당 인그레스 규칙을 어떤 인그레스 컨트롤러에 적용할 것인지를 의미
+- `nginx.ingress.kubernetes.io/rewrite-target`: 이 주석은 Nginx 인그레스 컨트롤러에서만 사용할 수 있는 기능이다. 인그레스에 정의된 경로로 들어오는 요청을 `rewrite-target`에 설정된 경로로 전달한다. 예를 들어, Nginx 인그레스 컨트롤러로 `/echo-hostname`으로 접근하면 hostname-service에는 `/` 경로로 전달된다.
+
+## Nginx 인그레스 컨트롤러에 SSL/TLS 보안 연결 적용
+**인그레스의 장점 중 하나는 쿠버네티스의 뒤쪽에 있는 디플로이먼트와 서비스가 아닌, 앞쪽에 있는 인그레스 컨트롤러에서 편리하게 SSL/TLS 보안 연결을 설정할 수 있다는 것이다.**  
+인그레스 컨트롤러 지점에서 인증서를 적용해 두면 요청이 전달되는 애플리케이션에 대해 모두 인증서 처리를 할 수 있다. 따라서 인그레스 컨트롤러가 보안 연결을 수립하기 위한 일종의 gateway 역할을 한다고 볼 수 있다.
+
+```yaml
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  name: ingress-example
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    kubernetes.io/ingress.class: "nginx"
+spec:
+  tls:
+  - hosts:
+    - [사용할 도메인 이름]
+    secretName: tls-secret
+  rules:
+  - host: [사용할 도메인 이름]
+    http:
+      paths:
+      - path: /echo-hostname
+        backend:
+          serviceName: hostname-service
+          servicePort: 80
+```
+
+이전과는 달리 `tls` 항목을 새롭게 정의했다. 이는 사용할 도메인 이름으로 접근하는 요청에 대해 `tls-secret` 시크릿의 인증서로 보안 연결을 수립하겠다는 뜻이다.
+
+## 여러 개의 인그레스 컨트롤러 사용하기
+하나의 쿠버네티스 클러스터에서 반드시 하나의 인그레스 컨트롤러를 사용해야 하는 것은 아니다. 별도의 값(클래스)을 적용한 Nginx 인그레스 컨트롤러를 생성해 `kubernetes.io/ingress.class`를 해당 값으로 설정할 수도 있다.
