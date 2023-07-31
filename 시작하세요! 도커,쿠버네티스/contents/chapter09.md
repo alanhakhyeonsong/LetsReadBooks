@@ -213,3 +213,172 @@ $ cat nfs-pod.yaml | sed "s/{NFS_SERVICE_IP}/$NFS_CLUSTER_IP/g" | kubectl apply 
 디플로이먼트를 생성하는 yaml 파일에서 `nfs` 항목을 정의하는 대신, `persistentVolumeClaim` 항목을 사용해 볼륨의 사용 여부만 나타내면 된다.
 
 ### PV와 PVC 사용하기
+이번에는 AWS EBS를 쿠버네티스의 퍼시스턴스 볼륨으로 등록해보자. 책의 예시처럼 `awscli` 명령어를 이용해 만들어보자.
+
+```bash
+$ export VOLUME_ID=$(aws ec2 create-volume --size 5 \
+--region ap-northeast-2 \
+--availability-zone ap-northeast-2a \
+--volume-type gp2 \
+--tag-specifications \
+'ResourceType=volume, Tags=[{Key=KubernetesCluster,Value=mycluster.k8s.local}]' \
+| jq '.VolumeId' -r)
+
+$ echo $VOLUME_ID
+vol-02178d79...
+```
+
+생성한 EBS 볼륨을 통해 쿠버네티스의 퍼시스턴트 볼륨을 생성해보자.
+
+```yaml
+# ebs-pv.yaml
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: ebs-pv
+spec:
+  capacity:
+    storage: 5Gi # 볼륨의 크기는 5G
+  accessModes:
+    - ReadWriteOnce # 하나의 포드(또는 인스턴스)에 의해서만 마운트될 수 있다.
+  awsElasticBlockStorage:
+    fsType: ext4
+    volumeID: <VOLUME_ID>
+```
+
+이번엔 애플리케이션을 배포하려는 사용자(개발자)의 입장이 되어 퍼시스턴트 볼륨 클레임과 포드를 함께 생성해보자.
+
+```yaml
+# ebs-pod-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: my-ebs-pvc
+spec:
+  storageClassName: ""
+  accessModes:
+    - ReadWriteOnce # 속성이 ReadWriteOnce인 퍼시스턴트 볼륨과 연결한다.
+  resources:
+    requests:
+      storage: 5Gi  # 볼륨 크기가 최소 5G인 퍼시스턴트 볼륨과 연결한다.
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: ebs-mount-container
+spec:
+  containers:
+    - name: ebs-mount-container
+      mage: busybox
+      args: [ "tail", "-f", "/dev/null" ]
+      volumeMounts:
+      - name: nfs-volume
+        mountPath: /mnt
+  volumes:
+  - name: ebs-volume
+    persistentVolumeClaim:
+      claimName: my-ebs-pvc # my-ebs-pvc라는 이름의 pvc를 사용
+```
+
+만약, pvc의 요구사항과 일치하는 pv가 존재하지 않는다면 포드는 계속해서 `Pending` 상태로 남아있게 된다. 쿠버네티스는 계속해서 주기적으로 조건이 일치하는 pv를 체크해 연결하려고 시도하기 때문에 조건에 만족하는 pv를 새롭게 생성한다면 자동으로 pvc와 연결될 것이다.
+
+<img width="655" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/e49f56c6-94db-4bd8-b631-33c12787cec5">
+
+### 퍼시스턴트 볼륨을 선택하기 위한 조건 명시
+실제 볼륨의 구현 스펙까진 아니더라도 적어도 특정 조건을 만족하는 볼륨만을 사용해야 한다는 것을 퍼시스턴스 볼륨 클레임을 통해 쿠버네티스에 알려줄 필요가 있다. `AccessMode`나 볼륨의 크기 등이 바로 이러한 조건에 해당한다. 퍼시스턴트 볼륨과 퍼시스턴트 볼륨 클레임의 `accessMode` 및 볼륨 크기 속성이 부합해야만 쿠버네티스는 두 리소스를 매칭해 바인드한다.
+
+<img width="646" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c816ba4f-5aaf-49de-8dcf-9a55712fee3f">
+
+`accessModes`는 퍼시스턴트 볼륨과 퍼시스턴트 볼륨 클레임을 생성할 때 설정할 수 있는 속성으로, 볼륨에 대해 읽기 및 쓰기 작업이 가능한지, 여러 개의 인스턴스에 의해 마운트될 수 있는지 등을 의미한다. 사용 가능한 `accessModes`의 종류는 다음과 같다.
+
+|`accessModes` 이름|`kubectl get`에서 출력되는 이름|속성 설명|
+|--|--|--|
+|`ReadWriteOnce`|RWO|1:1 마운트만 가능. 읽기 쓰기 가능|
+|`ReadOnlyMany`|ROX|1:N 마운트 가능. 읽기 전용|
+|`ReadWriteMany`|RWX|1:N 마운트 가능. 읽기 쓰기 가능|
+
+EBS 볼륨은 기본적으로 읽기, 쓰기가 모두 가능하며 1:1 관계의 마운트만 가능하기 때문에 `ReadWriteOnce`를 사용했다. 만약 1:N 마운트가 가능한 NFS 서버를 퍼시스턴트 볼륨으로 생성하려면 `ReadWriteMany`를 사용하는 것이 바람직할 것이다.
+
+단, `accessModes`나 볼륨의 크기는 해당 볼륨의 메타데이터일 뿐, 볼륨이 정말로 그러한 속성을 가지도록 강제하진 않는다. 이러한 설정들은 애플리케이션을 배포할 때 적절한 볼륨을 찾아주는 라벨과 같은 역할을 한다고 생각하면 된다.
+
+이 외에도 스토리지 클래스나 라벨 셀렉터를 이용해 퍼시스턴트 볼륨의 선택을 좀 더 세분화할 수 있다.
+
+### 퍼시스턴트 볼륨의 라이프사이클과 Reclaim Policy
+pv를 생성한 뒤, `kubectl get pv` 명령어로 목록을 확인해보면 `STATUS`라는 항목을 볼 수 있다. **`STATUS` 항목은 퍼시스턴트 볼륨이 사용 가능한지, 퍼시스턴트 볼륨 클레임과 연결됐는지 등을 의미한다.**
+
+- `Available`: 사용 가능 상태
+- `Bound`: 연결된 상태. 다른 퍼시스턴트 볼륨 클레임과 연결할 수 없다.
+- `Released`: 해당 퍼시스턴트 볼륨의 사용이 끝났다는 것을 의미. 이 상태에 있는 퍼시스턴트 볼륨은 다시 사용할 수 없다.
+
+퍼시스턴트 볼륨 클레임을 삭제했을 때, 퍼시스턴트 볼륨의 데이터를 어떻게 처리할 것인지 별도로 정의할 수도 있다. **퍼시스턴트 볼륨의 사용이 끝났을 때 해당 볼륨을 어떻게 초기화할 것인지 별도로 설정할 수 있는데, 쿠버네티스에선 이를 `Reclaim Policy`라고 부른다.** 크게 `Retain`, `Delete`, `Recycle` 방식이 있다.
+
+Reclaim Policy의 기본값인 `Retain`으로 설정돼 있다면 퍼시스턴트 볼륨의 라이프사이클은 `Available` → `Bound` → `Released`가 된다.
+
+<img width="620" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/7977b27d-2a63-4036-8346-3eebc48ee6bf">
+
+`Retain`으로 설정된 퍼시스턴트 볼륨은 연결된 퍼시스턴트 볼륨 클레임을 삭제한 뒤 `Released` 상태로 전환되며, 스토리지에 저장된 실제 데이터는 그대로 보존된다.
+
+만약, 퍼시스턴트 볼륨의 Reclaim Policy를 `Delete`로 설정해 생성했다면 **퍼시스턴트 볼륨의 사용이 끝난 뒤 자동으로 퍼시스턴트 볼륨이 삭제되며, 가능한 경우에 한해선 연결된 외부 스토리지도 함께 삭제된다.** 그 외엔 퍼시스턴트 볼륨 클레임이 삭제됐을 때 퍼시스턴트 볼륨의 데이터를 모두 삭제한 뒤 `Available` 상태로 만들어 주는 `Recycle` 정책을 사용할 수도 있지만, 이는 Deprecated 기능이라는 점만 알아두자.
+
+<img width="638" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/4d974ffe-83a5-4633-af95-b3bafac70a71">
+
+### StorageClass와 Dynamic Provisioning
+지금까지 퍼시스턴트 볼륨을 사용하려면 미리 외부 스토리지를 준비해야 했다. 하지만 매번 이렇게 볼륨 스토리지를 직접 수동으로 생성하고, 스토리지에 대한 접근 정보를 yaml 파일에 적는 것은 비효율적이다.
+
+이를 위해 쿠버네티스는 **다이나믹 프로비저닝(Dynamic Provisioning)** 이라는 기능을 제공한다. 이는 **퍼시스턴트 볼륨 클레임이 요구하는 조건과 일치하는 퍼시스턴트 볼륨이 존재하지 않는다면 자동으로 퍼시스턴트 볼륨과 외부 스토리지를 함께 프로비저닝하는 기능이다.** 따라서 이 기능을 사용하면 EBS와 같은 외부 스토리지를 직접 미리 생성해 둘 필요가 없다. 퍼시스턴트 볼륨 클레임을 생성하면 외부 스토리지가 자동으로 생성되기 때문이다.  
+퍼시스턴트 볼륨을 선택하기 위해 스토리지 클래스를 사용했었는데, 이는 다이나믹 프로비저닝에도 사용할 수 있다. 다이나믹 프로비저닝은 스토리지 클래스의 정보를 참고해 외부 스토리지를 생성하기 때문이다.
+
+<img width="642" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/3ab74ed4-9bba-4416-86db-235dea9abbaf">
+
+단, 다이나믹 프로비저닝을 모든 쿠버네티스 클러스터에서 범용적으로 사용할 수 있는 것은 아니며, 다이나믹 프로비저닝 기능이 지원되는 스토리지 프로비저너가 미리 활성화돼 있어야 한다. 만약 AWS나 GCP와 같은 클라우드 플랫폼에서 쿠버네티스를 사용하고 있다면 별도로 설정하지 않아도 자동으로 다이나믹 프로비저닝을 사용할 수 있다.
+
+```yaml
+# storageclass-slow.yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: slow
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: st1
+  fsType: ext4
+  zones: ap-northeast-2a
+```
+
+```yaml
+# storageclass-fast.yaml
+kind: StorageClass
+apiVersion: storage.k8s.io/v1
+metadata:
+  name: fast
+provisioner: kubernetes.io/aws-ebs
+parameters:
+  type: gp2
+  fsType: ext4
+  zones: ap-northeast-2a
+```
+
+위 yaml 파일에서 주목해야 할 부분은 `provisioner`와 `type`이다.
+- `provisioner`: 위 예시에선 AWS의 쿠버네티스에서 사용할 수 있는 EBS 동적 프로비저너를 설정함.
+- `type`: EBS가 어떤 종류인지 나타낸 것.
+
+```yaml
+# pvc-fast-sc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: pvc-fast-sc
+spec:
+  storageClassName: fast
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+```
+
+위 스토리지 클래스를 사용하는 pvc를 생성함으로써 다이나믹 프로비저닝을 발생시켜보면, 동적으로 EBS가 생성되고 pv 또한 생성될 것이다.
+
+**다이나믹 프로비저닝을 사용할 때 주의해야 할 점은 퍼시스턴트 볼륨의 Reclaim Policy가 자동으로 `Delete`로 설정된다는 것이다.** 동적으로 생성되는 퍼시스턴트 볼륨의 Reclaim Policy 속성은 스토리지 클래스에 설정된 `reclaimPolicy` 항목을 상속받는데, 스토리지 클래스의 `reclaimPolicy`는 기본적으로 `Delete`로 설정되기 때문이다.
+
+따라서 퍼시스턴트 볼륨 클레임을 삭제하면 EBS 볼륨 또한 함께 삭제된다. 다이나믹 프로비저닝을 사용할 때 `Delete`가 아닌 `Retain` 정책을 사용하고 싶다면 **스토리지 클래스를 정의하는 yaml 파일에 `reclaimPolicy: Retain`을 명시하거나, `kubectl edit` 또는 `patch` 등의 명령어로 퍼시스턴트 볼륨의 속성을 직접 변경해도 된다.**
