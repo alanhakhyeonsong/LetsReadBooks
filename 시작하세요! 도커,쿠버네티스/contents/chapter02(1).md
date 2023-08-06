@@ -172,3 +172,113 @@ wordpress
 이와 반대로 컨테이너가 데이터를 저장하고 있어 상태가 있는 경우를 stateful 하다고 말한다. stateful한 컨테이너 설계는 컨테이너 자체에서 데이터를 보관하므로 지양하는 것이 좋다.
 
 ## 도커 네트워크
+도커는 컨테이너가 생성될 때, 내부 IP를 순차적으로 할당하는데 다음과 같은 특성을 갖는다.
+- 이 IP는 컨테이너를 재시작할 때마다 변경될 수 있다.
+- 도커가 설치된 내부망에서만 사용할 수 있다.
+- 도커 컨테이너가 **외부와의 통신을 하기 위해** 컨테이너마다 가상 네트워크 인터페이스를 생성한다. (`veth`로 시작)
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/da5fcd8f-a529-4465-a7e2-caaf486068e7)
+
+컨테이너와 호스트의 네트워크는 위 그림과 같은 구성이다.
+
+`eth0`는 호스트의 네트워크 인터페이스라 볼 수 있고, `docker0`는 `veth` 가상 인터페이스와 호스트 인터페이스를 연결해줘서 도커 컨테이너가 외부와의 통신을 할 수 있도록 이어주는 역할을 한다. `docker0`를 브릿지라고 표현한다.
+
+여기서 브릿지는 도커 네트워크 드라이버의 한 종류라고 볼 수 있는데, 따라서 기본적으로 생성되는 도커 네트워크 드라이버는 브릿지지만 원한다면 다른 종류의 네트워크 드라이버를 가지는 도커 네트워크를 새로 생성할 수 있다.
+
+대표적인 네트워크 드라이버는 브릿지, 호스트, 논, 컨테이너, 오버레이가 있다. 도커의 네트워크를 다루는 명령어는 `docker network`로 시작한다.
+
+### 브릿지 네트워크
+브릿지 네트워크는 `docker0`이 아닌 사용자 정의 브리지를 새로 생성해 각 컨테이너에 연결하는 네트워크 구조다. 컨테이너는 연결된 브릿지를 통해 외부와 통신할 수 있다.
+
+```docker
+docker network create --driver bridge mybridge
+```
+
+생성한 네트워크를 컨테이너 생성 시 옵션으로 넣어 사용할 땐 다음과 같이 명령어를 작성하면 된다.
+
+```docker
+docker run -it --name mynetwork_container --net mybridge ${imagename}
+```
+
+이렇게 생성된 사용자 정의 네트워크는 `docker network disconnect`, `connect`를 통해 컨테이너에 유동적으로 붙이고 뗄 수 있다.
+
+네트워크의 서브넷, 게이트웨이, IP 할당 범위 등을 임의로 설정하려면 네트워크를 생성할 때 아래와 같이 `--subnet`, `--ip-range`, `--gateway` 옵션을 추가한다. 단, `--subnet`과 `--ip-range`는 같은 대역이어야 한다.
+
+```docker
+docker network create --driver=bridge \
+--subnet=172.72.0.0/16 \
+--ip-range=172.72.0.0/24 \
+--gateway=172.72.0.1 \
+my_custom_network
+```
+
+### 호스트 네트워크
+네트워크를 호스트로 설정하면 호스트의 네트워크 환경을 그대로 쓸 수 있다. 브릿지 드라이버 네트워크와 달리 호스트 드라이버의 네트워크는 별도로 생성할 필요 없이 기존의 host라는 이름의 네트워크를 사용한다.
+
+```bash
+root@docker-host:/# docker run -it --name network_host --net host ubuntu:20.04
+
+root@docker-host:/# echo "컨테이너 내부입니다"
+```
+
+`--net` 옵션을 입력해 호스트를 설정한 컨테이너의 내부에서 네트워크 환경을 확인하려면 호스트와 같은 것을 알 수 있다. 호스트 머신에서 설정한 호스트 이름도 컨테이너가 물려받기 때문에 컨테이너의 호스트 이름도 무작위 16진수가 아닌 도커 엔진이 설치된 호스트 머신의 호스트 이름으로 설정된다.
+
+컨테이너의 네트워크를 호스트 모드로 설정하면 컨테이너 내부의 애플리케이션을 별도의 포트 포워딩 없이 바로 서비스할 수 있다.
+
+### 논 네트워크
+아무런 네트워크를 쓰지 않는 것을 뜻한다. 이 옵션을 주면 외부와 연결이 단절된다.
+
+`--net` 옵션으로 `none`을 설정한 컨테이너 내부에서 네트워크 인터페이스를 확인하면 로컬호스트를 나타내는 `lo` 외엔 존재하지 않는 것을 확인할 수 있다.
+
+```bash
+# ifconfig
+lo        Link encap:Local Loopback
+          inet addr:127.0.0.1  Mask:255.0.0.0
+...
+```
+
+### 컨테이너 네트워크
+`--net` 옵션으로 `container`를 입력하면 다른 컨테이너의 네트워크 네임스페이스 환경을 공유할 수 있다. 공유되는 속성은 내부 IP, 네트워크 인터페이스의 MAC 주소 등이다. `--net` 옵션의 값으로 `container:[다른 컨테이너의 ID]`와 같이 입력한다.
+
+다른 컨테이너의 네트워크 환경을 공유하면 내부 IP를 새로 할당받지 않으며 호스트에 `veth`로 시작하는 가상 네트워크 인터페이스도 생성되지 않는다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/427b5eae-2d60-45af-adf3-210f0808a471)
+
+## 컨테이너 로깅
+도커는 컨테이너의 표준 출력(`StdOut`)과 에러(`StdErr`) 로그를 별도의 메타데이터 파일로 저장하며 이를 확인하는 명령어를 제공한다. 기본적으로 `docker logs`를 통해 접근하는 로그들은 JSON 형태로 도커 내부에 저장된다. 이에 접근하기 위한 명령어는 아래와 같다.
+
+```bash
+cat /var/lib/docker/containers/${CONTAINER_ID}/${CONTAINER_ID}-json.log
+```
+
+컨테이너 내부의 출력이 너무 많은 상태로 방치하면 json 파일의 크기가 계속해서 커질 수 있고, 결국 호스트의 남은 저장 공간을 전부 사용할 수도 있다. 이러한 상황을 방지하기 위해 `--log-opt` 옵션으로 컨테이너 json 로그 파일의 최대 크기를 지정할 수 있다.
+- `max-size`: 로그 파일의 최대 크기
+- `max-file`: 로그 파일의 개수
+
+```docker
+docker run -it --log-opt max-size=10k -log-opt max-file=3 \
+--name log-test ubuntu:20.04
+```
+
+### syslog 로그
+syslog는 유닉스 계열 OS에서 로그를 수집하는 오래된 표준 중 하나로서, 커널, 보안 등 시스템과 관련된 로그, 애플리케이션의 로그 등 다양한 종류의 로그를 수집해 저장한다. 대부분의 유닉스 계열 OS에선 syslog를 사용하는 인터페이스가 동일하기 때문에 체계적으로 로그를 수집하고 분석할 수 있다는 장점이 있다.
+
+```docker
+docker run -d --name syslog_container \
+--log-driver=syslog \
+ubuntu: 20.04 \
+echo syslogtest
+```
+
+syslog 로깅 드라이버는 기본적으로 로컬호스트의 syslog에 저장된다. ubuntu 16.04 이상이면 `journalctl -u docker.service`를 통해 생성된 로그를 확인할 수 있다. syslog를 원격 서버에 설치하면 로그 옵션을 추가해 로그 정보를 원격 서버로 보낼 수 있다. 이땐 `rsyslog`를 사용하면 된다.
+
+## 컨테이너 자원 할당 제한
+컨테이너를 생성하는 `run`, `create` 명령어에서 컨테이너의 자원 할당량을 조정하도록 옵션을 입력할 수 있다. 아무런 옵션을 입력하지 않으면 컨테이너는 호스트의 자원을 제한 없이 쓸 수 있게 설정된다.
+
+- `--memory`: 컨테이너 메모리 제한
+- `--cpu-shares`: 컨테이너에 가중치를 설정해 해당 컨테이너가 CPU를 상대적으로 얼마나 사용할 수 있는지 나타낸다.
+  - default: 1024
+- `--cpuset-cpu`: 호스트에 CPU가 여러 개 있을 때 이 옵션을 지정해 컨테이너가 특정 CPU만 사용하도록 설정
+- `--cpu-period`, `--cpu-quota`: 컨테이너의 CFS(Completely Fair Scheduler) 주기를 변경한다.
+- `--cpus`: 좀 더 직관적으로 CPU의 개수를 지정한다.
+- `--device-write-bps`, `--device-read-bps`, `--device-write-iops`, `--device-read-iops`: 컨테이너 내부에서 파일을 읽고 쓰는 대역폭을 제한. 블록 입출력 제한.
