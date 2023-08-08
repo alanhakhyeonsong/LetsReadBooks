@@ -3,7 +3,7 @@
 - [1장. 도커란?](./contents/chapter01.md)
 - 2장. 도커 엔진
   - [도커 컨테이너 다루기](./contents/chapter02(1).md)
-  - 도커 이미지
+  - [도커 이미지](./contents/chapter02(2).md)
   - Dockerfile
   - 도커 데몬
 - 3장. 도커 스웜
