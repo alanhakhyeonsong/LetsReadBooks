@@ -7,7 +7,7 @@
 - [4장. 처리율 제한 장치의 설계](./contents/chapter04.md)
 - [5장. 안정 해시 설계](./contents/chapter05.md)
 - 6장. 키-값 저장소 설계
-- 7장. 분산 시스템을 위한 유일 ID 생성기 설계
+- [7장. 분산 시스템을 위한 유일 ID 생성기 설계](./contents/chapter07.md)
 - 8장. URL 단축기 설계
 - 9장. 웹 크롤러 설계
 - [10장. 알림 시스템 설계](./contents/chapter10.md)
