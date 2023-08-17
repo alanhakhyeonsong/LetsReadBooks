@@ -143,6 +143,8 @@ AWS DynamoDB, Cassandra 같은 저장소는 최종 일관성 모델을 택하고
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c1ffff90-a5ed-4235-a651-039f62d94ff7)
 
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/9ea32f29-ca14-4a3d-bc27-e3809f1fe669)
+
 벡터 시계는 어떻게 동작할까?
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/1e5223ac-e720-4182-80ed-386a323c7b37)
