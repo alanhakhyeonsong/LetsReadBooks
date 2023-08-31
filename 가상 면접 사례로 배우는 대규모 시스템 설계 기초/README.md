@@ -9,7 +9,7 @@
 - [6장. 키-값 저장소 설계](./contents/chapter06.md)
 - [7장. 분산 시스템을 위한 유일 ID 생성기 설계](./contents/chapter07.md)
 - [8장. URL 단축기 설계](./contents/chapter08.md)
-- 9장. 웹 크롤러 설계
+- [9장. 웹 크롤러 설계](./contents/chapter09.md)
 - [10장. 알림 시스템 설계](./contents/chapter10.md)
 - [11장. 뉴스 피드 시스템 설계](./contents/chapter11.md)
 - 12장. 채팅 시스템 설계
