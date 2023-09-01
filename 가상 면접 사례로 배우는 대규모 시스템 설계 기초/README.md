@@ -14,6 +14,5 @@
 - [11장. 뉴스 피드 시스템 설계](./contents/chapter11.md)
 - [12장. 채팅 시스템 설계](./contents/chapter12.md)
 - [13장. 검색어 자동완성 시스템](./contents/chapter13.md)
-- 14장. 유튜브 설계
+- [14장. 유튜브 설계](./contents/chapter14.md)
 - [15장. 구글 드라이브 설계](./contents/chapter15.md)
-- 16장. 배움은 계속된다
