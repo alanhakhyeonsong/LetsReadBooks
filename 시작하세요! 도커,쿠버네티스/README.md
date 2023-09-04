@@ -7,7 +7,7 @@
   - [Dockerfile](./contents/chapter02(3).md)
   - 도커 데몬
 - 3장. 도커 스웜
-- 4장. 도커 컴포즈
+- [4장. 도커 컴포즈](./contents/chapter04.md)
 - 5장. 쿠버네티스 설치
 - [6장. 쿠버네티스 시작하기](./contents/chapter06.md)
 - [7장. 쿠버네티스 리소스의 관리와 설정](./contents/chapter07.md)
