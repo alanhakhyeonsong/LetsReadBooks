@@ -5,7 +5,7 @@
 - [Story 2. 내가 만든 프로그램의 속도를 알고 싶다.](./contents/chapter02.md)
 - [Story 3. 왜 자꾸 String을 쓰지 말라는 거야?](./contents/chapter03.md)
 - Story 4. 어디에 담아야 하는지...
-- Story 5. 지금까지 사용하던 for 루프를 더 빠르게 할 수 있다고?
+- [Story 5. 지금까지 사용하던 for 루프를 더 빠르게 할 수 있다고?](./contents/chapter05.md)
 - Story 6. static 제대로 한번 써 보자.
 - Story 7. 클래스 정보, 어떻게 알아낼 수 있나?
 - [Story 8. synchronization는 제대로 알고 써야 한다.](./contents/chapter08.md)
