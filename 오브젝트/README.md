@@ -14,6 +14,6 @@
 - [10장. 상속과 코드 재사용](./contents/chapter10.md)
 - [11장. 합성과 유연한 설계](./contents/chapter11.md)
 - [12장. 다형성](./contents/chapter12.md)
-- 13장. 서브클래싱과 서브타이핑
+- [13장. 서브클래싱과 서브타이핑](./contents/chapter13.md)
 - 14장. 일관성 있는 협력
 - 15장. 디자인 패턴과 프레임워크
