@@ -16,4 +16,4 @@
 - [12장. 다형성](./contents/chapter12.md)
 - [13장. 서브클래싱과 서브타이핑](./contents/chapter13.md)
 - [14장. 일관성 있는 협력](./contents/chapter14.md)
-- 15장. 디자인 패턴과 프레임워크
+- [15장. 디자인 패턴과 프레임워크](./contents/chapter15.md)
