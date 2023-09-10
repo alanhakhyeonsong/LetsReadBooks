@@ -1,6 +1,6 @@
 # 카프카 핵심 가이드
 ## 목차
-- Chapter 1. 카프카 시작하기
+- [Chapter 1. 카프카 시작하기](./contents/chapter01.md)
 - Chapter 2. 카프카 설치하기
 - Chapter 3. 카프카 프로듀서: 카프카에 메시지 쓰기
 - Chapter 4. 카프카 컨슈머: 카프카에서 데이터 읽기
