@@ -54,9 +54,9 @@ public class KafkaProducerConfig {
     @Bean
     public KafkaProducer<String, String> kafkaProducer() {
         Properties kafkaProps = new Properties();
-kafkaProps.put("bootstrap.servers", "broker1:9092,broker2:9092");
-kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
-kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProps.put("bootstrap.servers", "broker1:9092,broker2:9092");
+        kafkaProps.put("key.serializer", "org.apache.kafka.common.serialization.StringSerializer");
+        kafkaProps.put("value.serializer", "org.apache.kafka.common.serialization.StringSerializer");
 
         return new KafkaProducer<String, String>(kafkaProps);
     }
