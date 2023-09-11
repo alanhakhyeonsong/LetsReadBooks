@@ -2,7 +2,7 @@
 ## 목차
 - [Chapter 1. 카프카 시작하기](./contents/chapter01.md)
 - Chapter 2. 카프카 설치하기
-- Chapter 3. 카프카 프로듀서: 카프카에 메시지 쓰기
+- [Chapter 3. 카프카 프로듀서: 카프카에 메시지 쓰기](./contents/chapter03.md)
 - Chapter 4. 카프카 컨슈머: 카프카에서 데이터 읽기
 - Chapter 5. 프로그램 내에서 코드로 카프카 관리하기
 - Chapter 6. 카프카 내부 메커니즘
