@@ -16,5 +16,5 @@
 - [10장. 보안을 위한 인증과 인가 - ServiceAccount와 RBAC](./contents/chapter10.md)
 - 11장. 애플리케이션 배포를 위한 고급 설정
 - [12장. 커스텀 리소스와 컨트롤러](./contents/chapter12.md)
-- 13장. 포드를 사용하는 다른 오브젝트들
+- [13장. 포드를 사용하는 다른 오브젝트들](./contents/chapter13.md)
 - 14장. 쿠버네티스 모니터링
