@@ -11,6 +11,6 @@
 - Chapter 9. 데이터 파이프라인 구축하기
 - Chapter 10. 클러스터간 데이터 미러링하기
 - Chapter 11. 보안
-- Chapter 12. 카프카 운영하기
+- [Chapter 12. 카프카 운영하기](./contents/chapter12.md)
 - Chapter 13. 카프카 모니터링하기
 - Chapter 14. 스트림 처리
