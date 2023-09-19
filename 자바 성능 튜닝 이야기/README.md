@@ -12,7 +12,7 @@
 - [Story 9. IO에서 발생하는 병목 현상](./contents/chapter09.md)
 - [Story 10. 로그는 반드시 필요한 내용만 찍자.](./contents/chapter10.md)
 - [Story 11. JSP와 서블릿, Spring에서 발생할 수 있는 여러 문제점](./contents/chapter11.md)
-- Story 12. DB를 사용하면서 발생 가능한 문제점들
+- [Story 12. DB를 사용하면서 발생 가능한 문제점들](./contents/chapter12.md)
 - Story 13. XML과 JSON도 잘 쓰자.
 - Story 14. 서버를 어떻게 세팅해야 할까?
 - Story 15. 안드로이드 개발하면서 이것만은 피하자.
