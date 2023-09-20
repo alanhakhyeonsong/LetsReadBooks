@@ -132,4 +132,115 @@ IBM JVM의 JIT 컴파일 방식은 5가지로 나뉜다.
 
 자세한 사항은 [JIT 컴파일러 - IBM Documentation](https://www.ibm.com/docs/ko/sdk-java-technology/8?topic=reference-jit-compiler)과 [JIT 컴파일러의 코드 최적화 방법 - IBM Documentation](https://www.ibm.com/docs/ko/sdk-java-technology/8?topic=compiler-how-jit-optimizes-code)을 참고하자.
 
-## JVM이 시작할 때의 절차는 이렇다.
+## JVM이 시작할 때의 절차는 이렇다
+`java` 명령으로 특정 클래스를 실행하면 수행되는 단계를 간단히 정리해보면 다음과 같다.
+
+1. `java` 명령어 줄에 있는 옵션 파싱: 일부 명령은 자바 실행 프로그램에서 적절한 JIT 컴파일러를 선택하는 등의 작업을 하기 위해 사용하고, 다른 명령들은 HotSpot VM에 전달된다.
+2. 자바 힙 크기 할당 및 JIT 컴파일러 타입 지정: 메모리 크기나 JIT 컴파일러 종류가 명시적으로 지정되지 않은 경우에 자바 실행 프로그램이 시스템의 상황에 맞게 선정한다. 이 과정은 HotSpot VM Adaptive Tuning을 거친다.
+3. `CLASSPATH`와 `LD_LIBRARY_PATH` 같은 환경 변수를 지정한다.
+4. 자바의 `Main` 클래스가 지정되지 않았으면, Jar 파일의 `manifest` 파일에서 `Main` 클래스를 확인한다.
+5. JNI의 표준 API인 `JNI_CreateJavaVM`를 사용하여 새로 생성한 `non-primordial`이라는 스레드에서 HotSpot VM을 생성한다.
+6. HotSpot VM이 생성되고 초기화되면, `Main` 클래스가 로딩된 런처에선 `main()` 메서드의 속성 정보를 읽는다.
+7. `CallStackVoidMethod`는 네이티브 인터페이스를 불러 HotSpot VM에 있는 `main()` 메서드가 수행된다. 이때 자바 실행 시 `Main` 클래스 뒤에 있는 값들이 전달된다.
+
+자바의 VM을 생성하는 `JNI_CreateJavaVM` 단계의 절차를 자세히 보면 다음과 같다.
+
+1. `JNI_CreateJavaVM`는 동시에 두개의 스레드에서 호출할 수 없고, 오직 하나의 HotSpot VM 인스턴스가 프로세스 내에서 생성될 수 있도록 보장된다. HotSpot VM이 정적인 데이터 구조를 생성하기 때문에 다시 초기화는 불가능하여, 오직 하나의 HotSpot VM이 프로세스에서 생성될 수 있다.
+2. JNI 버전이 호환성이 있는지 점검하고, GC 로깅을 위한 준비도 완료된다.
+3. OS 모듈들이 초기화된다. 예를 들면 랜덤 번호 생성기, PID 할당 등이 여기에 속한다.
+4. 커맨드 라인 변수와 속성들이 `JNI_CreateJavaVM` 변수에 전달되고, 나중에 사용하기 위해 파싱한 후 보관한다.
+5. 표준 자바 시스템 속성(`properties`)이 초기화된다.
+6. 동기화, 메모리, safepoint 페이지와 같은 모듈들이 초기화된다.
+7. `libzip`, `libhpi`, `libjava`, `libthread`와 같은 라이브러리들이 로드된다.
+8. 시그널 처리기가 초기화 및 설정된다.
+9. 스레드 라이브러리가 초기화된다.
+10. 출력 스트림 로거가 초기화된다.
+11. JVM을 모니터링하기 위한 에이전트 라이브러리가 설정되어 있으면 초기화 및 시작된다.
+12. 스레드 처리를 위해 필요한 스레드 상태와 스레드 로컬 저장소가 초기화된다.
+13. HotSpot VM의 글로벌 데이터들이 초기화 된다. 여기에는 이벤트 로그, OS 동기화, 성능 통계 메모리(`perfMemory`), 메모리 할당자(`chunkPool`)들이 있다.
+14. HotSpot VM에서 스레드를 생성할 수 있는 상태가 된다. `main` 스레드가 생성되고, 현재 OS 스레드에 붙는다. 그러나 아직 스레드 목록에 추가되진 않는다.
+15. 자바 레벨의 동기화가 초기화 및 활성화된다.
+16. 부트 클래스로더, 코드 캐시, 인터프리터, JIT 컴파일러, JNI, 시스템 ditcionary, 글로벌 데이터 구조의 집합인 universe 등이 초기화 된다.
+17. 스레드 목록에 자바 `main` 스레드가 추가되고, universe의 상태를 점검한다. HotSpot VM의 중요한 기능을 하는 HotSpot VMThread가 생성된다. 이 시점에 HotSpot VM의 현재 상태를 JVMTI에 전달한다.
+18. `java.lang` 패키지에 있는 `String`, `System`, `Thread`, `ThreadGroup`, `Class` 클래스와 `java.lang` 하위 패키지에 있는 `Method`, `Finalizer` 클래스 등이 로딩되고 초기화된다.
+19. HotSpot VM의 시그널 핸들러 스레드가 시작되고, JIT 컴파일러가 초기화되며, HotSpot의 컴파일 브로커 스레드가 시작된다. 그리고, HotSpot VM과 관련된 각종 스레드들이 시작한다. 이때부터 HotSpot VM의 전체 기능이 동작한다.
+20. JNIEnv가 시작되며, HotSpot VM을 시작한 호출자에게 새로운 JNI 요청을 처리할 상황이 되었다고 전달해준다.
+
+## JVM이 종료될 때의 절차는 이렇다
+만약 정상적으로 JVM을 종료시킬 때는 다음의 절차를 거치지만, OS의 `kill -9`와 같은 명령으로 JVM을 종료시키면 이 절차를 따르지 않는다.
+
+만약 JVM이 시작할 때 오류가 있어 시작을 중지할 때나, JVM에 심각한 에러가 있어 중지할 필요가 있을 때는 `DestroyJavaVM`이라는 메서드를 HotSpot 런처에서 호출한다. HotSpot VM의 종료는 다음의 `DestroyJavaVM` 메서드의 종료 절차를 따른다.
+
+1. HotSpot VM이 작동중인 상황에선 단 하나의 데몬이 아닌 스레드가 수행될 때까지 대기한다.
+2. `java.lang` 패키지에 있는 `Shutdown` 클래스의 `shutdown()`이 수행된다. 이 메서드가 수행되면 자바 레벨의 shutdown hook이 수행되고, `finaliation-on-exit`이란 값이 `true`일 경우 자바 객체 finalizer를 수행한다.
+3. HotSpot VM 레벨의 shutdown hook을 수행함으로써 HotSpot VM의 종료를 준비한다. 이 작업은 `JVM_OnExit()`을 통해 지정된다. 그리고 HotSpot VM의 profiler, stat sampler, watcher, gc 스레드를 종료시킨다. 이 작업들이 종료되면 JVMTI를 비활성화하며, `Signal` 스레드를 종료시킨다.
+4. `HotSpot`의 `JavaThread::exit()`을 호출하여 JNI 처리 블록을 해제한다. 그리고 guard pages, 스레드 목록에 있는 스레드를 삭제한다. 이 순간부터는 HotSpot VM에선 자바 코드를 실행하지 못한다.
+5. HotSpot VM 스레드를 종료한다. 이 작업을 수행하면 HotSpot VM에 남아있는 HotSpot VM 스레드들을 safepoint로 옮기고, JIT 컴파일러 스레드들을 중지시킨다.
+6. JNI, HotSpot VM, JVMTI barrier에 있는 추적 기능을 종료시킨다.
+7. 네이티브 스레드에서 수행하고 있는 스레드들을 위해 HotSpot의 `vm exited` 값을 설정한다.
+8. 현제 스레드를 삭제한다.
+9. 입출력 스트림을 삭제하고, `PerfMemory` 리소스 연결을 해제한다.
+10. JVM 종료를 호출한 호출자로 복귀한다.
+
+꼭 외우고 있어야 하는 내용도 아니고, 참고로만 알아두자. 이해가 안되도 좋다. (나도 모르겠음;)
+
+## 클래스 로딩 절차도 알고 싶어요?
+1. 주어진 클래스의 이름으로 클래스 패스에 있는 바이너리로 된 자바 클래스를 찾는다.
+2. 자바 클래스를 정의한다.
+3. 해당 클래스를 나타내는 `java.lang` 패키지의 `Class` 클래스의 객체를 생성한다.
+4. 링크 작업이 수행된다. 이 단계에서 `static` 필드를 생성 및 초기화하고, 메서드 테이블을 할당한다.
+5. 클래스의 초기화가 진행되며, 클래스의 `static` 블록과 `static` 필드가 가장 먼저 초기화된다. 당연하지만, 해당 클래스가 초기화 되기 전에 부모 클래스의 초기화가 먼저 이루어진다.
+
+loading → linking → initializing으로 기억하면 된다.
+
+참고로 클래스 로딩 시 다음과 같은 에러가 발생할 수 있는데 일반적으로 이 에러들은 자주 발생하지 않는다.
+
+- `NoClassDefFoundError`
+- `ClassFormatError`
+- `UnsupportedClassVersionError`
+- `ClassCircularityError`
+- `IncompatibleClassChangeError`
+- `VerifyError`
+
+클래스 로더가 클래스를 찾고 로딩할 때 다른 클래스 로더에 클래스를 로딩해 달라고 요청하는 경우가 있다. 이를 class loader delegation이라 부른다. 클래스 로더는 계층적으로 구성되어 있다.
+
+기본 클래스 로더는 시스템 클래스 로더라 불리며 `main` 메서드가 있는 클래스와 클래스 패스에 있는 클래스들이 이에 속한다. 그 하위에 있는 애플리케이션 클래스 로더는 Java SE의 기본 라이브러리에 있는 것이 될 수도 있고, 개발자가 임의로 만든 것일 수도 있다.
+
+### 부트스트랩 클래스 로더
+HotSpot VM은 부트스트랩 클래스 로더를 구현한다. 부트스트랩 클래스 로더는 HotSpot VM의 `BOOTCLASSPATH`에서 클래스들을 로드한다. 예를 들면, Java SE 클래스 라이브러리들을 포함하는 `rt.jar`가 이에 속한다.
+
+### HotSpot의 클래스 메타데이터
+HotSpot VM 내에서 클래스를 로딩하면 클래스에 대한 `instanceKlass`와 `arrayKlass`라는 내부적인 형식을 VM의 Perm 영역에 생성한다. `instanceKlass`는 클래스 정보를 포함하는 `java.lang.Class` 클래스의 인스턴스를 말한다.
+
+HotSpot VM은 내부 데이터 구조인 `klassOop`이라는 것을 사용하여 내부적으로 `instanceKlass`에 접근한다. 여기서 Oop은 ordinary object pointer의 약자다.
+
+### 내부 클래스 로딩 데이터의 관리
+HotSpot VM은 클래스 로딩을 추적하기 위해 다음 3개의 해시 테이블을 관리한다.
+
+- `SystemDictionary`: 로드된 클래스를 포함하며, 클래스 이름 및 클래스 로더를 키를 갖고 그 값으로 `klassOop`를 갖고 있다. `SystemDictionary`는 클래스 이름과 초기화한 로더의 정보, 클래스 이름과 정의한 로더의 정보도 포함한다. 이 정보들은 `safepoint`에서만 제거된다.
+- `PlaceholderTable`: 현재 로딩된 클래스들에 대한 정보를 관리한다. 이 테이블은 `ClasCircularityError`를 체크할 때 사용하며, 다중 스레드에서 클래스를 로딩하는 클래스 로더에서도 사용된다.
+- `LoaderConstraintTable`: 타입 체크시의 제약 사항을 추정하는 용도로 사용된다.
+
+## 예외는 JVM에서 어떻게 처리될까?
+JVM은 자바 언어의 제약을 어겼을 때 exception이라는 시그널로 처리한다. HotSpot VM 인터프리터, JIT 컴파일러 및 다른 HotSpot VM 컴포넌트는 예외 처리와 모두 관련되어 있다. 일반적인 예외 처리 케이스는 두 가지다.
+
+- 예외를 발생한 메서드에서 잡을 경우
+- 호출한 메서드에 의해 잡힐 경우
+
+후자의 경우엔 보다 복잡하며, 스택을 뒤져서 적당한 핸들러를 찾는 작업을 필요로 한다.
+
+예외는,
+- 던져진 바이트 코드에 의해 초기화 될 수 있으며,
+- VM 내부 호출의 결과로 넘어올 수도 있고,
+- JNI 호출로부터 넘어올 수도 있고,
+- 자바 호출로부터 넘어올 수도 있다.
+
+여기서 가장 마지막 경우는 단순히 앞의 세가지 경우의 마지막 단계에 속할 뿐이다.
+
+VM이 예외가 던져졌다는 것을 알아차렸을 때, 해당 예외를 처리하는 가장 가까운 핸들러를 찾기 위해 HotSpot VM 런타임 시스템이 수행된다. 이 때, 핸들러를 찾기 위해선 다음 3개의 정보가 사용된다.
+
+- 현재 메서드
+- 현재 바이트 코드
+- 예외 객체
+
+만약 현재 메서드에서 핸들러를 찾지 못했을 땐 현재 수행되는 스택 프리엠을 통해 이전 프레임을 찾는 작업을 수행한다. 적당한 핸들러를 찾으면, HotSpot VM 수행 상태가 변경되며, HotSpot VM은 핸들러로 이동하고 자바 코드 수행은 계속된다.
