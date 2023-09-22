@@ -1,4 +1,5 @@
 # Real MySQL 8.0
+백엔드 개발자 관점에서 알아두면 좋을 법한 Chapter 위주로 정리
 
 ## 목차
 - [4장. 아키텍처](./contents/chapter04.md)

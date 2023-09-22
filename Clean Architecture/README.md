@@ -1,5 +1,4 @@
 # Clean Architecture
-클린 아키텍처 솔로 스터디입니다.  
 한 Part에 들어있는 각 부를 합쳐 총 6개 Part로 나누어 정리합니다.
 
 ## 목차
