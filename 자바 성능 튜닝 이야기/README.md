@@ -24,4 +24,4 @@
 - [Story 21. 반드시 튜닝 해야 하는 대상은?](./contents/chapter21.md)
 - [Story 22. 어떤 화면이 많이 쓰이는지 알고 싶다.](./contents/chapter22.md)
 - [Story 23. 튜닝의 절차는 그때 그때 달라요.](./contents/chapter23.md)
-- Story 24. 애플리케이션에서 점검해야 할 대상들
+- [Story 24. 애플리케이션에서 점검해야 할 대상들](./contents/chapter24.md)
