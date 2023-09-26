@@ -157,3 +157,177 @@ DAO 테스트를 작성하는 일은 쉽지 않다. 트랜잭션을 자동으로
 이런 테스트는 서로 영향을 주지 않은 채로 독립적으로 실행할 수 있다. 어차피 롤백될 것이므로 테스트 내에선 어떤 식으로든 DB를 조작해도 상관없다. 아예 DB 테이블의 데이터를 모두 삭제하고 새로운 테스트 데이터를 넣어도 된다.
 
 ### 트랜잭션 지원 테스트 작성 방법
+#### 트랜잭션 매니저
+**스프링의 모든 트랜잭션은 트랜잭션 매니저를 이용해 만들어지고 관리된다. 따라서 트랜잭션 매니저를 이용할 수 있으면 트랜잭션도 제어할 수 있다.** 어떤 데이터 액세스 기술을 사용했든 상관없이 `PlatformTransactionManager` 타입의 트랜잭션 매니저 빈이 등록되어 있을 것이다. 먼저 트랜잭션 매니저 빈을 다음과 같이 테스트 클래스에서 DI 받는다.
+
+```java
+@Autowired
+PlatformTransactionManager transactionManager;
+```
+
+테스트에선 `TransactionTemplate`과 `TransactionCallback`을 이용해 트랜잭션 경계를 설정한 후에 DB를 사용하는 빈을 호출해 테스트를 진행한다.
+
+```java
+@Autowired
+JpaDao dao;
+
+@Test
+public void txTest() {
+    new TransactionTemplate(transactionManager).execute(
+        new TransactionCallback<Object>() {
+            public Object doInTransaction(TransactionStatus status) {
+                status.setRollbackOnly(); // 예외가 발생하지 않아도 트랜잭션 종료 시 트랜잭션이 롤백되도록 설정
+
+                // execute()에 의해 시작된 트랜잭션 안에서 모든 DB 작업이 진행된다.
+                dao.deleteAll();
+                dao.add(new Member(10, "Spring", 7.8));
+                assertThat(dao.count(), is(1));
+
+                return null;
+            }
+        }
+    );
+}
+```
+
+트랜잭션 매니저를 이용해 트랜잭션 템플릿을 만들고, `execute()`를 실행해 같은 트랜잭션 안에서 동작해야 하는 코드를 콜백에 담아 전달한다. 트랜잭션이 시작한 후에 DAO 코드가 실행되기 때문에 JPA DAO는 아무런 문제 없이 동작한다.
+
+`TransactionStatus` 오브젝트의 `setRollbackOnly()`에 주목하자. 이 메소드를 실행하면 해당 트랜잭션은 무조건 롤백된다. 트랜잭션 작업을 강제로 롤백하게 해서 롤백 테스트를 만드는 경우 유용하게 쓸 수 있다. 런타임 예외를 던져 트랜잭션을 롤백시키는 방법도 있겠지만 `setRollbackOnly()`를 사용하는 방법이 훨씬 깔끔하다. 이 테스트 메소드가 끝나고 나면 테스트에서 사용한 DAO가 수정한 DB 데이터는 모두 테스트를 실행하기 이전 상태로 복구될 것이다.
+
+#### `@Transactional` 테스트
+테스트에서 트랜잭션 매니저를 DI 받아 트랜잭션 템플릿과 함께 사용하는 방법은 테스트 코드가 지저분해진다는 단점이 있다. 템플릿/콜백 방식에서 나타나는 장황한 코드로 인해 테스트 코드를 이해하기도 조금 불편해진다.
+
+그렇다면 테스트에선 서비스 계층처럼 AOP를 적용해 테스트에서 트랜잭션을 적용할 수는 없을까? 테스트 오브젝트에 AOP를 적용하는 건 불가능하다. 스프링 AOP의 적용 대상은 컨텍스트에 등록된 빈 오브젝트 뿐이다. 따라서 JUnit이 오브젝트를 생성하고 관리하는 테스트 클래스의 오브젝트는 AOP 적용 대상이 될 수 없다.
+
+**하지만 스프링의 테스트 컨텍스트 프레임워크는 마치 AOP를 적용한 것과 유사한 방식으로 트랜잭션 기능을 테스트 메소드에 적용할 수 있게 해준다.** 트랜잭션을 적용하고 싶은 메소드가 있으면 다음과 같이 `@Transactional` 애노테이션을 메소드에 부여해주면 된다. 이렇게 되면 코드가 간결해지는 효과가 있다.
+
+```java
+@Test
+@Transactional
+publci void txTest() {
+    dao.deleteAll();
+    dao.add(new Member(10, "Spring", 7.8));
+    assertThat(dao.count(), is(1));
+}
+```
+
+`@Transactional`은 AOP에 의해 동작하는 것이 아니라고 했다. 따라서 XML 설정에 애노테이션 방식의 트랜잭션을 위한 설정을 해줄 필요는 없다. 트랜잭션 매니저는 물론 빈으로 등록되어 있어야 한다. **테스트에 `@Transactional`을 사용하면 기본적으로 `transactionManager`라는 이름의 트랜잭션 매니저 빈이 등록되어 있다고 간주하고 이를 가져와 트랜잭션 제어에 사용한다.**
+
+`@Transactional`이 부여된 테스트 메소드에서 트랜잭션 AOP가 적용된 서비스 계층의 오브젝트 메소드를 호출하는 것도 가능하다. 이땐 테스트의 `@Transactional`에 의해 시작된 트랜잭션에 서비스 계층의 트랜잭션이 참여하게 된다. 트랜잭션 전파 방식의 적용을 받기 때문이다. 이를 이용해서 서비스 계층의 트랜잭션 속성과 다른 속성을 테스트의 이 애노테이션에 적용해놓고 서비스 계층을 호출하는 테스트도 만들 수 있다. 이를 잘 이용하면 트랜잭션 전파 방식을 따라 다른 트랜잭션 안에 참여할 때 어떻게 동작하는지 확인해보는 테스트 또한 만들 수 있다.
+
+**테스트의 `@Transactional`은 서비스 계층의 코드에 적용된 것과 중요한 다른 점이 있다. 바로 강제롤백 옵션이 설정된 트랜잭션으로 만들어진다는 점이다.** 단지 이 애노테이션을 부여하는 것만으로 `TransactionStatus`의 `setRollbackOnly()`가 호출되는 것과 동일한 방식으로 동작한다. `@Rollback` 애노테이션을 이용해 롤백이 적용되지 않도록 만들어 줄 수도 있다. 참고로 `@Before`, `@After` 메소드 역시 트랜잭션 안에서 실행된다. 만약 트랜잭션이 시작되기 전이나 완전히 종료도니 후에 해야하는 작업이 있다면, `@BeforeTransaction`, `@AfterTransaction`이 붙은 메소드를 사용하자.
+
+#### ORM 롤백 트랜잭션 테스트의 주의사항
+Hibernate나 JPA를 사용하는 롤백 테스트를 만들 때는 주의할 점이 있다. ORM은 기본적으로 모든 작업 결과를 바로 DB에 반영하지 않는다. 가능한 한 오랫동안 메모리에 변경사항을 저장하고 있다가 꼭 필요한 시점에서 DB에 반영한다. **최적화를 위한 트랜잭션 내의 캐싱 기법**이라 볼 수 있다.
+
+ORM의 엔티티 오브젝트를 이용한 작업을 SQL로 만들어 DB로 보내는 것을 flush라 한다. 기본적으로 ORM은 자동플러시 모드로 동작한다. 이 모드에선 트랜잭션이 커밋되거나, 캐시에 저장해둔 정보가 반영되는 `SELECT` 쿼리를 실행해야 하거나, 코드에서 `flush()`를 실행해서 강제로 플러시하도록 만들 때만 트랜잭션 내의 캐시에 저장해뒀던 ORM 작업 결과를 SQL로 만들어 DB에서 실행시킨다.
+
+ORM의 캐시와 자동플러시 모드로 인해 다음과 같은 테스트를 작성할 위험이 발생한다.
+
+```java
+@Test
+@Transactional
+public void multiAdd() {
+    User user = new User(...);
+    hibernateDao.add(user);
+    assertThat(user, is(hibernateDao.get(user.getId())));
+}
+```
+
+얼핏 보면 DB에 `User` 엔티티를 하나 저장하고, 이를 다시 조회해서 비교하는 테스트로 보인다. 하지만 실제로는 DB에 아무것도 전달되지 않은 채로 테스트가 끝난다. 물론 테스트는 성공한 것으로 나온다. 엔티티에 대한 ORM 매핑 정보가 잘못됐거나 DB에 중복된 정보가 들어가 오류가 발생할 상황이라도 테스트는 성공으로 끝날 것이다.
+
+**Hibernate 같은 ORM은 일단 엔티티를 추가하면 `INSERT` 문을 준비해서 메모리 캐시에 보관만 해둔다. DB에 `INSERT`를 실행하는 것은 최대한 뒤로 미룬다.** 그런데 여기서 기본키로 조회하는 `get()`같은 메소드를 실행하면 먼저 메모리 내의 캐시에서 엔티티를 찾는다. 캐시엔 방금 등록한 객체가 있으므로 그냥 반환한다. 문제는 이 상태에서 테스트가 끝나면 스프링은 트랜잭션을 롤백시킨다는 점이다. Hibernate는 롤백된 트랜잭션의 작업을 DB에 반영할 필요가 없으니 메모리 캐시의 엔티티 오브젝트를 제거하고 작업을 끝내버린다. 결국 한 번도 SQL이 만들어져 전달되지 않고 테스트가 종료되는 것이다. 따라서 제대로 DAO에 대한 테스트가 진행됐다 볼 수 없다.
+
+**이럴 때는 테스트 코드 내부에서 강제로 `flush()`를 호출하는 방법을 사용해야 한다.**
+
+```java
+User user = new User(...);
+hibernateDao.add(user);
+SessionFactory.getCurrentSession().flush();
+
+assertThat(user, is(hibernateDao.get(user.getId())));
+```
+
+`get()` 같은 경우는 기본키로 검색하는 것이라 `INSERT`문이 실행되서 매핑에 대한 검증이 됐다면 다른 문제는 없다고 불 수 있긴 하지만, 그래도 `get()`에 의해 `SELECT` 쿼리가 실행되게 하고 싶다면 내부 캐시를 강제로 비우도록 `clear()` 메소드를 호출해줄 수 있다.
+
+```java
+SessionFactory.getCurrentSession().clear();
+```
+
+DAO를 직접 테스트하지 않고 서비스 계층 오브젝트를 거치는 경우에도 이런 문제점을 염두에 둬야 한다. ORM에선 테스트에서 의도적으로라도 한 번은 `flush()`를 실행하는 것이 좋다.
+
+## 스프링 3.1의 컨텍스트 테스트 프레임워크
+### 자바 코드 설정정보와 프로파일 활용
+#### @Configuration 클래스 테스트
+스프링 3.0의 컨텍스트 테스트 프레임워크는 테스트에서 사용할 애플리케이션 컨텍스트의 설정정보로 XML만 사용할 수 있었지만, 스프링 3.1에선 XML 대신 `@Configuration` 클래스도 사용할 수 있다. `@ContextConfiguration`의 `classes`를 이용해 해당 클래스를 바로 지정해서 사용할 수 있다.
+
+```java
+@Configuration
+@EnableTransactionManagement
+@ComponentScan("myproject")
+public class AppConfig {
+    // ...
+}
+
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration(classes=AppConfig.class)
+@Transactional
+public class DaoTest {
+    @Autowired UserDao userDao;
+    // ...
+
+    @Test
+    public void userDaoTest() { ... }
+}
+```
+
+아래와 같이 두 개의 스태틱 `@Configuration` 클래스가 테스트 클래스 내부에 정의됐으면 해당 클래스 모두 테스트용 컨텍스트로 사용된다.
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration
+public class MyAppTest {
+    // ...
+
+    @Configuration
+    static class MyAppConfig { ... }
+
+    @Configuration
+    static class MyExtraConfig { ... }
+}
+```
+
+nested static class로 정의하는 디폴트 설정 클래스들은 `private`이거나 `final`로 선언하면 안된다는 사실을 기억해두자.
+
+만약 XML과 `@Configuration` 둘 다 정의되어 있다면, 어떤 설정 정보를 사용해야 할 지 판단할 수 없으므로 에러가 난다. 아래의 경우 역시 마찬가지다.
+
+```java
+@ContextConfiguration(locations="my-context.xml", classes=MyConfig.class)
+```
+
+#### @ActiveProfile
+빈 설정정보에 프로파일을 적용했다면 테스트에선 어떻게 활성 프로파일을 지정할 수 있을까?
+
+테스트는 서버가 아니라 독립 실행환경으로 동작하므로 표준 환경 오브젝트가 지원하는 환경변수와 시스템 프로퍼티를 이용해 활성 프로파일을 지정할 수 있을 것이다. 테스트를 실행할 때 JVM 옵션으로 `-Dspring.profiles.active=dev`라고 해주면 `dev` 프로파일이 활성화된 컨텍스트가 사용된다.
+
+하지만 환경변수나 시스템 프로퍼티 설정은 번거롭다. 테스트를 실행하는 별도의 스크립트를 따로 만들지 않는다면 환경이 바뀔 때마다 테스트용 활성 프로파일 설정을 다시 해줘야 한다. 또, 한 번에 실행하는 테스트 클래스가 여러 개인데 각기 다른 활성 프로파일을 적용하고 싶다면 환경변수나 시스템 프로퍼티로 일괄 적용하는 방법을 사용할 수 없다.
+
+따라서 스프링 3.1은 간편하게 테스트용 활성 프로파일을 지정할 수 있는 `@ActiveProfiles`를 제공한다.
+
+```java
+@RunWith(SpringJUnit4ClassRunner.class)
+@ContextConfiguration
+@ActiveProfiles("dev")
+public class MyAppTest {
+    // ...
+}
+```
+
+## 정리
+- 테스트 컨텍스트 프레임워크를 사용하면 컨텍스트 캐싱을 통해 테스트 성능을 향상시킬 수 있다.
+- 테스트 컨텍스트 정보는 상속도 가능하다.
+- 테스트 오브젝트는 빈은 아니지만 테스트 컨텍스트의 도움으로 애플리케이션 컨텍스트로부터 테스트에 필요한 빈을 주입받을 수 있. 주요 DI용 애노테이션을 활용할 수 있다.
+- DAO를 단독으로 테스트하거나 테스트 작업이 다른 테스트에 영향을 주지 않기 우해서는 롤백 테스트로 만들어야 한다.
+- `@Transactional`은 테스트에서 롤백 테스트를 만들 때 사용한다.
+- ORM에 대한 테스트는 ORM의 캐시가 동작하는 특징을 잘 이해하고 사용해야 한다.
+- DBUnit을 트랜잭션 테스트에 활용하면 테스트 데이터를 손쉽게 등록할 수 있다.
