@@ -17,7 +17,7 @@
 - [Story 14. 서버를 어떻게 세팅해야 할까?](./contents/chapter14.md)
 - Story 15. 안드로이드 개발하면서 이것만은 피하자.
 - [Story 16. JVM은 도대체 어떻게 구동될까?](./contents/chapter16.md)
-- Story 17. 도대체 GC는 언제 발생할까?
+- [Story 17. 도대체 GC는 언제 발생할까?](./contents/chapter17.md)
 - Story 18. GC가 어떻게 수행되고 있는지 보고 싶다.
 - Story 19. GC 튜닝을 항상 할 필요는 없다.
 - Story 20. 모니터링 API인 JMX
