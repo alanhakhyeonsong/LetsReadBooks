@@ -5,6 +5,7 @@ Since July 2021 By.Ramos
 - 이 레포를 통해 자유롭게 참고하며 공부하셔도 좋습니다.
 - 업무나 업무 외적으로 주인장 맘대로 공부하다 정리하니 내용이 없는 부분도 있을 수 있음에 주의 바랍니다.
 - 가끔 사내 세미나 및 자체 교육에 참고 자료로 사용하곤 합니다.
+- 궁금한 점이나, 함께 이야기하고 싶은 내용들은 [Discussion](https://github.com/alanhakhyeonsong/LetsReadBooks/discussions)을 통해 자유롭게 남겨주세요.
 - Star나 Watching를 통한 많은 관심 부탁드립니다:)
 
 ## Books
