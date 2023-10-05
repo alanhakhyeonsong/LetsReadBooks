@@ -18,7 +18,7 @@
 - Story 15. 안드로이드 개발하면서 이것만은 피하자.
 - [Story 16. JVM은 도대체 어떻게 구동될까?](./contents/chapter16.md)
 - [Story 17. 도대체 GC는 언제 발생할까?](./contents/chapter17.md)
-- Story 18. GC가 어떻게 수행되고 있는지 보고 싶다.
+- [Story 18. GC가 어떻게 수행되고 있는지 보고 싶다.](./contents/chapter18.md)
 - Story 19. GC 튜닝을 항상 할 필요는 없다.
 - Story 20. 모니터링 API인 JMX
 - [Story 21. 반드시 튜닝 해야 하는 대상은?](./contents/chapter21.md)
