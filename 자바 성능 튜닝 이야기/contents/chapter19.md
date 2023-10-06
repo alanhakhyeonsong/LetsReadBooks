@@ -58,7 +58,7 @@ GC 방식 역시 GC의 성능에 많은 영향을 주는 옵션이다. 다음은
 |Serial GC|`-XX:+UseSerialGC`||
 |Parallel GC|`-XX:+UseParallelGC`||
 ||`-XX:ParallelGCThreads=value`||
-|Parallel Compacting GC|`-XX:+UseParallelOldGC||
+|Parallel Compacting GC|`-XX:+UseParallelOldGC`||
 |CMS GC|`-XX:+UseConcMarkSweepGC`||
 ||`-XX:+UsePerNewGC`||
 ||`-XX:+CMSParallelRemarkEnabled`||
