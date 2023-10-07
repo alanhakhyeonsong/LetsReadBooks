@@ -20,7 +20,7 @@
 - [Story 17. 도대체 GC는 언제 발생할까?](./contents/chapter17.md)
 - [Story 18. GC가 어떻게 수행되고 있는지 보고 싶다.](./contents/chapter18.md)
 - [Story 19. GC 튜닝을 항상 할 필요는 없다.](./contents/chapter19.md)
-- Story 20. 모니터링 API인 JMX
+- [Story 20. 모니터링 API인 JMX](./contents/chapter20.md)
 - [Story 21. 반드시 튜닝 해야 하는 대상은?](./contents/chapter21.md)
 - [Story 22. 어떤 화면이 많이 쓰이는지 알고 싶다.](./contents/chapter22.md)
 - [Story 23. 튜닝의 절차는 그때 그때 달라요.](./contents/chapter23.md)
