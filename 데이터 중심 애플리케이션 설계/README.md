@@ -4,7 +4,7 @@
 - [1장. 신뢰할 수 있고 확장 가능하며 유지보수하기 쉬운 애플리케이션](./contents/chapter01.md)
 - [2장. 데이터 모델과 질의 언어](./contents/chapter02.md)
 - [3장. 저장소와 검색](./contents/chapter03.md)
-- 4장. 부호화와 발전
+- [4장. 부호화와 발전](./contents/chapter04.md)
 
 ### Part 2 - 분산 데이터
 - [고부하로 확장](./contents/part2-intro.md)
