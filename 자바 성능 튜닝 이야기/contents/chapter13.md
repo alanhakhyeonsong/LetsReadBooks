@@ -262,13 +262,13 @@ SAX와 크게 다른 점은 따로 핸들러를 지정하지 않고, 파싱한 �
 ```java
 @GenerateMicroBenchmark
 public void withDOMParse100() {
-    ParseDOM pd=new ParseDOM();
+    ParseDOM pd = new ParseDOM();
     pd.parseDOM("dummy100.xml");
 }
 	
 @GenerateMicroBenchmark
 public void withDOMParse1000() {
-    ParseDOM pd=new ParseDOM();
+    ParseDOM pd = new ParseDOM();
     pd.parseDOM("dummy1000.xml");
 }
 ```
@@ -357,23 +357,23 @@ public class ParseJSON {
 
     public void parseStream(String json) {
         JsonFactory f = new JsonFactory();
-        StringBuilder jsonResult=new StringBuilder();
+        StringBuilder jsonResult = new StringBuilder();
         try {
             JsonParser jp = f.createJsonParser(new File(json));
             jp.nextToken();
             while (jp.nextToken() != JsonToken.END_ARRAY) {
                 String fieldName = jp.getCurrentName();
-                if(fieldName!=null) {
+                if (fieldName != null) {
                     jp.nextToken(); 
-                    String text=jp.getText();
-                    if(fieldName.equals("productName")) {
+                    String text = jp.getText();
+                    if (fieldName.equals("productName")) {
 			jsonResult.append("Product=").append(text).append("\t");
-                    } else if(fieldName.equals("price")) {
+                    } else if (fieldName.equals("price")) {
                         jsonResult.append("Price=").append(text).append("\n");
                     }
                 }
             }
-        } catch(Exception e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
@@ -401,13 +401,13 @@ public class JSONParser {
 
     @GenerateMicroBenchmark
     public void parseStream100(){
-        ParseJSON pj=new ParseJSON();
+        ParseJSON pj = new ParseJSON();
         pj.parseStream("dummy100.json");
     }
 
     @GenerateMicroBenchmark
     public void parseStream1000(){
-        ParseJSON pj=new ParseJSON();
+        ParseJSON pj = new ParseJSON();
         pj.parseStream("dummy1000.json");
     }
 }
