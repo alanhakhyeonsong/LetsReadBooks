@@ -171,7 +171,7 @@ SQL은 **선언형** 질의 언어인 반면 IMS와 코다실은 **명령형** �
 **맵리듀스는 선언형 질의 언어도 완전한 명령형 질의 API도 아닌 그 중간 정도에 있다.** 질의 로직은 처리 프레임워크가 반복적으로 호출하는 조각 코드로 표현한다. 맵리듀스는 여러 함수형 프로그래밍 언어에 있는 `map`, `reduce` 함수를 기반으로 한다.
 
 ```sql
-# PostgreSQL
+# PostgresSQL
 SELECT date_trunc('month', observation_timestamp) AS observation_month,
   sum(num_animals) AS total_animals
 FROM observations
