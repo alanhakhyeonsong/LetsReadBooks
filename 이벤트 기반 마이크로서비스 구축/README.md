@@ -4,7 +4,7 @@
 - [Chapter 1. 왜 이벤트 기반 마이크로서비스인가?](./contents/chapter01.md)
 - [Chapter 2. 이벤트 기반 마이크로서비스 기초](./contents/chapter02.md)
 - [Chapter 3. 통신 및 데이터 규약](./contents/chapter03.md)
-- Chapter 4. 기존 시스템에 이벤트 기반 아키텍처 통합
+- [Chapter 4. 기존 시스템에 이벤트 기반 아키텍처 통합](./contents/chapter04.md)
 - Chapter 5. 이벤트 기반 처리 기본
 - Chapter 6. 확정적 스트림 처리
 - Chapter 7. 상태 저장 스트리밍
