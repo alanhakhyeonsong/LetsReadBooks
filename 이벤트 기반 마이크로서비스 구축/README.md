@@ -9,7 +9,7 @@
 - Chapter 6. 확정적 스트림 처리
 - Chapter 7. 상태 저장 스트리밍
 - Chapter 8. 마이크로서비스 워크플로 구축
-- Chapter 9. FaaS 응용 마이크로서비스
+- [Chapter 9. FaaS 응용 마이크로서비스](./contents/chapter09.md)
 - Chapter 10. 기본 프로듀서/컨슈머 마이크로서비스
 - Chapter 11. 대용량 프레임워크 마이크로서비스
 - Chapter 12. 경량 프레임워크 마이크로서비스
