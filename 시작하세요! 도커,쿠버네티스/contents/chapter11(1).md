@@ -175,3 +175,133 @@ containers:
 기본적으로 포드의 우선순위는 `Guaranteed` > `Burstable` > `BestEffort` 순이다. 포드가 메모리를 많이 사용하면 할수록 우선순위가 낮아지기 때문에 이 순서가 절대적인 것은 아니다.
 
 ### ResourceQuota와 LimitRange
+#### ResourceQuota로 자원 사용량 제한
+**`ResourceQuota`는 특정 네임스페이스에서 사용할 수 있는 자원 사용량의 합을 제한할 수 있는 쿠버네티스 오브젝트다.**
+
+- 네임스페이스에서 할당할 수 있는 자원(CPU, 메모리, 퍼시스턴트 볼륨 클레임의 크기, 컨테이너 내부의 임시 스토리지)의 총 합을 제한할 수 있다.
+  - 네임스페이스 별로 자원 사용량을 제한하기 위해 사용한다.
+- 네임스페이스에서 생성할 수 있는 리소스(서비스, 디플로이먼트 등)의 개수를 제한할 수 있다.
+  - 쿠버네티스 클러스터의 자원 고갈을 막기 위해 사용한다.
+
+```bash
+$ kubectl get quota
+$ kubectl get resourcequota
+```
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota-example
+  namespace: default
+spec:
+  hard:
+    requests.cpu: "1000m"
+    requests.memory: "500Mi"
+    limits.cpu: "1500m"
+    limits.memory: "1000Mi"
+```
+
+`ResourceQuota`의 정보엔 현재 default 네임스페이스에 생성된 포드들의 자원 할당량 합이 출력된다. 새롭게 생성되는 포드가 한계치보다 더 많은 자원을 사용하려고 하면 포드를 생성하는 API 요청은 실패한다. 단, `ResourceQuota`를 생성하기 이전에 존재하고 있던 포드들이 이미 자원을 한계치보다 많이 사용하고 있다고 해서 기존의 포드가 종료되진 않는다.
+
+`ResourceQuota`는 자원의 사용량뿐만 아니라 디플로이먼트, 포드, 시크릿 등의 리소스 개수를 제한할 수도 있다.
+
+- 디플로이먼트, 포드, 서비스, 시크릿, 컨피그맵, 퍼시스턴트 볼륨 클레임 등의 개수
+- `NodePort` 타입의 서비스 개수, `LoadBalancer` 타입의 서비스 개수
+- QoS 클래스 중 `BestEffort` 클래스에 속하는 포드의 개수
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: resource-quota-example
+  namespace: default
+spec:
+  hard:
+    requests.cpu: "1000m"
+    requests.memory: "500Mi"
+    limits.cpu: "1500m"
+    limits.memory: "1000Mi"
+    count/pods: 3
+    count/services: 5
+```
+
+리소스의 개수를 제한할 때, `count/<오브젝트 이름>.<API 그룹 이름>`으로 제한한다.
+
+`ResourceQuota`를 사용하면 `Requests`와 `Limits`가 모두 설정돼 있지 않아 노드의 자원을 제한 없이 사용할 수 있는 `BestEffort` 클래스의 포드 개수를 제한할 수 있다.
+
+```yaml
+apiVersion: v1
+kind: ResourceQuota
+metadata:
+  name: besteffort-quota
+  namespace: default
+spec:
+  hard:
+    count/pods: 1
+  scopes:
+    - BestEffort
+```
+
+`scopes` 항목은 필수는 아니지만, `BestEffort` 및 `Terminating`, `NotTerminating`, `NotBestEffort`와 같은 포드의 상태를 값으로 입력할 수 있다.
+
+#### LimitRange로 자원 사용량 제한
+**`LimitRange`는 특정 네임스페이스에서 할당되는 자원의 범위 또는 기본값을 지정할 수 있는 쿠버네티스 오브젝트다.**
+
+- 포드의 컨테이너에 CPU나 메모리 할당량이 설정돼 있지 않은 경우, 컨테이너에 자동으로 기본 `Requests` 또는 `Limits` 값을 설정할 수 있다.
+- 포드 또는 컨테이너의 CPU, 메모리, 퍼시스턴트 볼륨 클레임 스토리지 크기의 최솟값/최댓값을 설정할 수 있다.
+
+```bash
+$ kubectl get limitranges
+$ kubectl get limits
+```
+
+```yaml
+apiVersion: v1
+kind: LimitRange
+metadata:
+  name: mem-limit-range
+spec:
+  limits:
+  - default:
+    memory: 256Mi
+    cpu: 200m
+  defaultRequest:
+    memory: 128Mi
+    cpu: 100m
+  max:
+    memory: 1Gi
+    cpu: 1000m
+  min:
+    memory: 16Gi
+    cpu: 50m
+  type: Container
+```
+
+- `default`: 포드의 컨테이너에 `Limits` 값이 설정돼 있지 않다면 자동으로 이 값을 `Limits`로 설정한다.
+- `defaultRequest`: 포드의 컨테이너에 `Requests` 값이 설정돼 있지 않다면 자동으로 이 값을 `Requests`로 설정한다.
+- `max`: 포드의 컨테이너에 설정될 수 있는 `Limits` 값의 최대치를 의미한다. 만약 `max`에 설정된 값보다 더 많은 자원을 사용하려고 시도하면 포드의 생성은 실패한다.
+- `min`: 포드의 컨테이너에 설정될 수 있는 `Requests` 값의 최소치를 의미한다. 만약 `min`에 설정된 값보다 자원을 더 적게 사용하려고 시도하면 포드의 생성은 실패한다.
+- `type`: 이러한 자원 할당에 대한 설정이 컨테이너 단위로 적용될 것임을 나타낸다. 컨테이너 외에도 `Pod`, `PersistentVolumeClaim`을 입력할 수 있다.
+
+### ResourceQuota, LimitRange의 원리 : Admission Controller
+<img width="731" alt="image" src="https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/da43e849-86ce-44bc-a27c-af57bb0cb9a3">
+
+어드미션 컨트롤러는 **사용자의 API 요청이 적절한지 검증하고, 필요에 따라 API 요청을 변형하는 단계다.** `kubectl` 등으로부터 전송된 API가 부적절하다면 어드미션 컨트롤러 단계에서 해당 API 요청을 거절할 수도 있고, 필요하다면 API 요청에 포함된 파라미터를 변경할 수도 있다.
+
+`ServiceAccount`가 어드미션 컨트롤러의 한 종류다. 마찬가지로 `ResourceQuota`와 `LimitRange` 또한 어드미션 컨트롤러의 한 종류다.
+
+이와 같은 동작 방식을 구현하기 위해 쿠버네티스에는 총 두 단계의 어드미션 컨트롤러가 있다.
+
+- 검증 단계: API 요청을 검사
+- 변형 단계: API 요청을 적절히 수정
+
+포드를 생성하는 API 요청이 `ResourceQuota`와 `LimitRange` 어드미션 컨트롤러에 의해 어떻게 조작되는지 생각해보자.
+
+1. 사용자가 `kubectl apply -f pod.yaml` 같은 명령어로 API 서버에 요청을 전송한다.
+2. x509 인증서, 서비스 어카운트 등을 통해 인증 단계를 거친다.
+3. 롤, 클러스터 롤 등을 통해 인가 단계를 거친다.
+4. 어드미션 컨트롤러인 `ResourceQuota`는 해당 포드의 자원 할당 요청이 적절한지 검증한다. 만약 포드로 인해 `ResourceQuota`에 설정된 네임스페이스의 최대 자원 할당량을 초과한다면 해당 API 요청은 거절된다.
+5. 해당 API 요청에 포함된 포드 데이터에 자원 할당이 설정되지 않은 경우, 어드미션 컨트롤러인 `LimitRange`는 포드 데이터에 CPU 및 메모리 할당의 기본값을 추가함으로써 원래의 포드 생성 API의 데이터를 변형한다.
+
+위 단계 중 4, 5번이 바로 어드미션 컨트롤러가 동작하는 단계다.
