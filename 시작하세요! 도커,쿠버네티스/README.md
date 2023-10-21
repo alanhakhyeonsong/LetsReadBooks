@@ -15,7 +15,7 @@
 - [9장. 퍼시스턴트 볼륨(PV)과 퍼시스턴트 볼륨 클레임(PVC)](./contents/chapter09.md)
 - [10장. 보안을 위한 인증과 인가 - ServiceAccount와 RBAC](./contents/chapter10.md)
 - 11장. 애플리케이션 배포를 위한 고급 설정
-  - 포드의 자원 사용량 제한
+  - [포드의 자원 사용량 제한](./contents/chapter11(1).md)
   - 쿠버네티스 스케줄링
   - 쿠버네티스 애플리케이션 상태와 배포
 - [12장. 커스텀 리소스와 컨트롤러](./contents/chapter12.md)
