@@ -68,7 +68,7 @@ TypeScript를 사용하면 매개변수와 변수에 제공되는 값의 타입�
 
 ```typescript
 function sayMyName(fullName) {
-  console.log('You acting kind of shady, ain't callin' me ${fullName}');
+  console.log(`You acting kind of shady, ain\'t callin\' me ${fullName}`);
 }
 
 sayMyName("Ramos", "Gumo");
