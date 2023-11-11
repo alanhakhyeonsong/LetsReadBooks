@@ -3,7 +3,7 @@
 ## 목차
 - Part 1 : 개념
   - [Chapter 1. 자바스크립트에서 타입스크립트로](./contents/chapter01.md)
-  - Chapter 2. 타입 시스템
+  - [Chapter 2. 타입 시스템](./contents/chapter02.md)
   - Chapter 3. 유니언과 리터럴
   - Chapter 4. 객체
 - Part 2 : 특징
