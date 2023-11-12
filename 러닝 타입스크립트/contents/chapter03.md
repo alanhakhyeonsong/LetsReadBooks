@@ -240,7 +240,135 @@ nameMaybe.toLowerCase();
 TypeScript의 모범 사례는 일반적으로 엄격한 `null` 검사를 활성화 하는 것이다. 그렇게 해야만 충돌을 방지하고 십억 달러의 실수를 제거할 수 있다.
 
 ### 참 검사를 통한 내로잉
+JavaScript에서 참 또는 truthy는 `&&` 연산자 또는 `if` 문처럼 `boolean` 문맥에서 `true`로 간주된다는 점을 떠올려보자. JavaScript에서 `false`, `0`, `-0`, `0n` `""`, `null`, `undefined`, `NaN` 처럼 falsy로 정의된 값을 제외한 모든 값은 모두 참이다.
+
+TypeScript는 잠재적인 값 중 truthy로 확인된 일부에 한해서만 변수의 타입을 좁힐 수 있다. 다음 코드에서 `geneticist`는 `string | undefined` 타입이며 `undefined` 타입은 항상 falsy이므로 TypeScript는 `if` 문의 코드 블록에선 `geneticist`가 `string` 타입이 되어야 한다고 추론할 수 있다.
+
+```typescript
+let geneticist = Math.random() > 0.5
+    ? "Barbara McClintock"
+    : undefined;
+
+if (geneticist) {
+    geneticist.toUpperCase(); // Ok: string
+}
+
+geneticist.toUpperCase();
+//
+// Error: Object is possibly 'undefined'.
+```
+
+논리 연산자인 `&&`와 `?`는 참 여부를 검사하는 일도 잘 수행한다. 하지만 안타깝게도 참 여부 확인 외에 다른 기능은 제공하지 않는다. `string | undefined` 값에 대해 알고 있는 것이 falsy라면, 그것이 빈 문자열인지 `undefined`인진 알 수 없다.
+
+```typescript
+geneticist && geneticist.toUpperCase(); // Ok: string | undefined
+geneticist?.toUpperCase(); // Ok: string | undefined
+```
+
+```typescript
+let biologist = Math.random() > 0.5 && "Rachel Carson";
+
+if (biologist) {
+    biologist; // 타입: string
+} else {
+    biologist; // 타입: false | string
+}
+```
+
 ### 초깃값이 없는 변수
+JavaScript에서 초깃값이 없는 변수는 기본적으로 `undefined`가 된다. 이는 타입 시스템에서 극단적인 경우를 나타내기도 한다. 만일 `undefined`를 포함하지 않는 타입으로 변수를 선언한 다음, 값을 할당하기 전에 사용하려 시도하면 어떻게 될까?
+
+TypeScript는 값이 할당될 때까지 변수가 `undefined`임을 이해할 만큼 충분히 영리하다. 값이 할당되기 전에 속성 중 하나에 접근하려는 것처럼 해당 변수를 사용하려 시도하면 다음과 같은 오류 메시지가 나타난다.
+
+```typescript
+let mathematician: string;
+
+mathematician?.length;
+//
+// Error: Variable 'mathematician' is used before being assigned.
+
+mathematician = "Mark Goldberg";
+mathematician.length; // Ok
+```
+
+변수 타입에 `undefined`가 포함되어 있는 경우엔 오류가 보고되지 않는다. 변수 타입에 `| undefined`를 추가하면, `undefined`는 유효한 타입이기에 사용 전에는 정의할 필요가 없음을 TypeScript에 나타낸다.
+
+```typescript
+let mathematician: string | undefined;
+
+mathematician?.length; // Ok
+
+mathematician = "Mark Goldberg";
+mathematician.length; // Ok
+```
+
 ## 타입 별칭
+코드에서 볼 수 있는 유니언 타입 대부분은 두세 개의 구성 요소만 갖는다. 그러나 가끔 반복해서 입력하기 불편한 조금 긴 형태의 유니언 타입을 발견할 수 있다.
+
+다음 각 변수는 5개의 가능한 타입 중 하나가 될 수 있다.
+
+```typescript
+let rawDataFirst: boolean | number | string | null | undefined;
+let rawDataSecond: boolean | number | string | null | undefined;
+let rawDataThird: boolean | number | string | null | undefined;
+```
+
+TypeScript에는 재사용하는 타입에 더 쉬운 이름을 할당하는 **타입 별칭**이 있다. 이는 `type 새로운 이름 = 타입` 형태를 갖는다. 편의상 타입 별칭은 파스칼 케이스로 이름을 지정한다.
+
+```typescript
+type MyName = ...;
+```
+
+타입 별칭은 타입 시스템의 '복사해서 붙여넣기'처럼 작동한다. TypeScript가 타입 별칭을 발견하면 해당 별칭이 참조하는 실제 타입을 입력한 것처럼 작동한다. 앞서 살펴본 변수의 타입 애너테이션에서 상당히 길었던 유니언 타입을 타입 별칭을 사용해 다음과 같이 작성할 수 있다.
+
+```typescript
+type RawData = boolean | number | string | null | undefined;
+
+let rawDataFirst: RawData;
+let rawDataSecond: RawData;
+let rawDataThird: RawData;
+```
+
+타입 별칭은 타입이 복잡해질 때마다 사용할 수 있는 편리한 기능이다. 여기선 여러 타입을 가질 수 있는 형태의 유니언 타입만 다뤘지만 `array`, `function`, `object` 타입도 포함해보자.
+
 ### 타입 별칭은 자바스크립트가 아닙니다
+타입 별칭은 타입 애너테이션처럼 JavaScript로 컴파일되지 않는다. 순전히 TypeScript 타입 시스템에만 존재한다.
+
+앞서 다룬 예제는 다음 JavaScript로 컴파일된다.
+
+```javascript
+let rawDataFirst;
+let rawDataSecond;
+let rawDataThird;
+```
+
+타입 별칭은 순전히 타입 시스템에만 존재하므로 런타임 코드에선 참조할 수 없다. TypeScript는 런타임에 존재하지 않는 항목에 접근하려고 하면 타입 오류로 알려준다.
+
+```typescript
+type SomeType = string | undefined;
+
+console.log(SomeType);
+//
+// Error: 'SomeType' only refers to a type, but is being used as a value here.
+```
+
+다시 말하지만 타입 별칭은 순전히 '개발 시'에만 존재한다.
+
 ### 타입 별칭 결합
+타입 별칭은 다른 타입 별칭을 참조할 수 있다. 유니언 타입인 타입 별칭 내에 또 다른 유니언 타입인 타입 별칭을 포함하고 있다면 다른 타입 별칭을 참조하는 것이 유용하다.
+
+`IdMaybe` 타입은 `undefined`와 `null`, 그리고 `Id` 내의 타입을 포함한 유니언 타입이다.
+
+```typescript
+type Id = number | string;
+
+// IdMaybe 타입은 다음과 같음: number | string | undefined | null
+type IdMaybe = Id | undefined | null;
+```
+
+사용 순서대로 타입 별칭을 선언할 필요는 없다. 파일 내에서 타입 별칭을 먼저 선언하고 참조할 타입 별칭을 나중에 선언해도 된다.
+
+```typescript
+type IdMaybe = Id | undefined | null; // Ok
+type Id = number | string;
+```
