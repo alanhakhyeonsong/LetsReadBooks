@@ -2,7 +2,7 @@
 ## 목차
 - [04 : 변수](./contents/chapter04.md)
 - [05 : 표현식과 문](./contents/chapter05.md)
-- 06 : 데이터 타입
+- [06 : 데이터 타입](./contents/chapter06.md)
 - 07 : 연산자
 - 08 : 제어문
 - 09 : 타입 변환과 단축 평가
