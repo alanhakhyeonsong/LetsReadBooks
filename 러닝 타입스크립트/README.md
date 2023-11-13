@@ -5,7 +5,7 @@
   - [Chapter 1. 자바스크립트에서 타입스크립트로](./contents/chapter01.md)
   - [Chapter 2. 타입 시스템](./contents/chapter02.md)
   - [Chapter 3. 유니언과 리터럴](./contents/chapter03.md)
-  - Chapter 4. 객체
+  - [Chapter 4. 객체](./contents/chapter04.md)
 - Part 2 : 특징
   - Chapter 5. 함수
   - Chapter 6. 배열
