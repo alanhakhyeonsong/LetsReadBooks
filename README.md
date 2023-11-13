@@ -39,6 +39,7 @@ Since July 2021 By.Ramos
 - 자바 ORM 표준 JPA 프로그래밍 - 김영한
 - Kotlin In Action - 드미트리 제메로프, 스베트라나 이사코바
 - 엘라스틱 스택 개발부터 운영까지 - 김준영, 정상운
+- 모던 자바스크립트 Deep Dive - 이웅모
 - 러닝 타입스크립트 - 조시 골드버그
 
 ## Rules
