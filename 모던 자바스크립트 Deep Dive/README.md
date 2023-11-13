@@ -1,7 +1,7 @@
 # 모던 자바스크립트 Deep Dive
 ## 목차
 - [04 : 변수](./contents/chapter04.md)
-- 05 : 표현식과 문
+- [05 : 표현식과 문](./contents/chapter05.md)
 - 06 : 데이터 타입
 - 07 : 연산자
 - 08 : 제어문
