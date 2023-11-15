@@ -104,10 +104,10 @@ for (var i = 0; i < 2; i++) { console.log(i); }
 
 ```jsx
 function foo () {
-	return
-		{}
-	// ASI의 동작 결과 => return; {};
-	// 개발자의 예측 => return {};
+  return
+    {}
+    // ASI의 동작 결과 => return; {};
+    // 개발자의 예측 => return {};
 }
 
 console.log(foo()); // undefined
