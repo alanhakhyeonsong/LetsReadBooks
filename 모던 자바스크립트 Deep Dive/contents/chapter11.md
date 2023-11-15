@@ -256,7 +256,42 @@ console.log(person); // {name: "Kim", address: "Seoul"}
 ---
 
 📌 얕은 복사와 깊은 복사
+객체를 프로퍼티 값으로 갖는 객체의 경우 얕은 복사는 한 단계까지만 복사하는 것을 말하고, 깊은 복사는 객체에 중첩되어 있는 객체까지 모두 복사하는 것을 말한다.
 
+```jsx
+const o = { x: { y: 1 } };
+
+// 얕은 복사
+const c1 = { ...o };
+console.log(c1 === 0); // false
+console.log(c1.x === o.x); // true
+
+// lodash의 cloneDeep을 사용한 깊은 복사
+// npm install lodash
+const _ = require('lodash');
+// 깊은 복사
+const c2 = _.cloneDeep(o);
+console.log(c2 === o); // false
+console.log(c2.x === o.x); // false
+```
+
+얕은 복사와 깊은 복사로 생성된 객체는 원본과는 다른 객체다. 즉, 원본과 복사본은 참조 값이 다른 별개의 객체다. 하지만 얕은 복사는 객체에 중첩되어 있는 객체의 경우 참조 값을 복사하고, 깊은 복사는 객체에 중첩되어 있는 객체까지 모두 복사해서 원시 값처럼 완전한 복사본을 만든다는 차이가 있다.
+
+다음과 같이 원시 값을 할당한 변수를 다른 변수에 할당하는 것을 깊은 복사, 객체를 할당한 변수를 다른 변수에 할당하는 것을 얕은 복사라고 부르는 경우도 있다.
+
+```javascript
+const v = 1;
+
+// 깊은 복사
+const c1 = v;
+console.log(c1 === v); // true
+
+const o = { x: 1 };
+
+// 얕은 복사
+const c2 = o;
+console.log(c2 === o); // true
+```
 ---
 
 ### 참조에 의한 전달
@@ -273,3 +308,45 @@ var copy = person;
 객체를 가리키는 변수(원본)을 다른 변수(사본)에 할당하면 원본의 **참조 값이 복사되어 전달**된다. 이를 **참조에 의한 전달**이라 한다.
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c9b684d4-7273-47f5-aa94-7d2d1ad28634)
+
+원본과 사본은 저장된 메모리 주소는 다르지만 동일한 참조 값을 갖는다. 이것은 **두 개의 식별자가 하나의 객체를 공유**한다는 것을 의미한다. 따라서 원본 또는 사본 중 어느 한쪽에서 객체를 변경(변수에 새로운 객체를 재할당하는 것이 아니라 객체의 프로퍼티 값을 변경하거나 프로퍼티를 추가, 삭제)하면 서로 영향을 주고 받는다.
+
+```javascript
+var person = {
+	name: 'Ramos'
+};
+
+// 참조 값을 복사(얕은 복사). copy와 person은 동일한 참조 값을 갖는다.
+var copy = person;
+
+// copy와 person은 동일한 객체를 참조한다.
+console.log(copy === person); // true
+
+// copy를 통해 객체를 변경한다.
+copy.name = 'Sergio';
+
+// person을 통해 객체를 변경한다.
+person.address = 'Seoul';
+
+// 어느 한쪽에서 객체를 변경하면 서로 영향을 주고 받는다.
+console.log(person); // {name: "Sergio", address: "Seoul"}
+console.log(copy); // {name: "Sergio", address: "Seoul"}
+```
+
+- 값에 의한 전달과 참조에 의한 전달은 식별자가 기억하는 메모리 공간에 저장되어 있는 값을 복사해서 전달한다는 면에서 동일하다.
+- 식별자가 기억하는 메모리 공간, 즉 변수에 저장되어 있는 원시 값이냐 참조 값이냐의 차이만 있다.
+- JavaScript에는 참조에 의한 전달은 존재하지 않고, **값에 의한 전달만이 존재한다고 말할 수 있다.**
+- 참고로 JavaScript의 이 같은 동작 방식을 설명하는 정확한 용어가 존재하지 않는다.
+
+```javascript
+var person1 = {
+	name: 'Ramos'
+};
+
+var person2 = {
+	name: 'Ramos'
+};
+
+console.log(person1 === person2); // false
+console.log(person1.name === person2.name); // true
+```
