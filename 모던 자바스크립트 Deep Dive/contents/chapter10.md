@@ -48,10 +48,10 @@ JavaScript는 프로토타입 기반 객체지향 언어로서 클래스 기반 
 
 ```jsx
 var person = {
-	name: 'Ramos'
-	sayHello: function() {
-		console.log(`Hello! My name is ${this.name}.`);
-	}
+  name: 'Ramos'
+  sayHello: function() {
+    console.log(`Hello! My name is ${this.name}.`);
+  }
 };
 
 console.log(typeof person); // object
@@ -75,9 +75,9 @@ console.log(typeof empty); // object
 
 ```jsx
 var person = {
-	// 프로퍼티 키는 name, 값은 'Ramos'
-	name: 'Ramos',
-	age: 20
+  // 프로퍼티 키는 name, 값은 'Ramos'
+  name: 'Ramos',
+  age: 20
 };
 ```
 
@@ -92,16 +92,16 @@ var person = {
 
 ```jsx
 var person = {
-	firstName: 'Sergio', // 식별자 네이밍 규칙을 준수하는 프로퍼티 키
-	'last-name': 'Ramos' // 식별자 네이밍 규칙을 준수하지 않는 프로퍼티 키
+  firstName: 'Sergio', // 식별자 네이밍 규칙을 준수하는 프로퍼티 키
+  'last-name': 'Ramos' // 식별자 네이밍 규칙을 준수하지 않는 프로퍼티 키
 };
 
 console.log(person); // {firstName: "Sergio", last-name: "Ramos"}
 
 // JS 엔진은 따옴표를 생략한 last-name을 - 연산자가 있는 표현식으로 해석한다.
 var person = {
-	firstName: 'Sergio',
-	last-name: 'Ramos' // SyntaxError: Unexpected token -
+  firstName: 'Sergio',
+  last-name: 'Ramos' // SyntaxError: Unexpected token -
 };
 ```
 
@@ -124,7 +124,7 @@ console.log(obj); // {hello: "world"}
 
 ```jsx
 var foo = {
-	'': '' // 빈 문자열도 프로퍼티 키로 사용할 수 있다.
+  '': '' // 빈 문자열도 프로퍼티 키로 사용할 수 있다.
 };
 
 console.log(foo); // {"": ""}
@@ -139,8 +139,8 @@ console.log(foo); // {"": ""}
 // 나중에 선언한 프로퍼티가 먼저 선언한 프로퍼티를 덮어쓴다.
 // 에러가 발생하진 않는다.
 var foo = {
-	name: 'Maldini',
-	name: 'Ramos'
+  name: 'Maldini',
+  name: 'Ramos'
 };
 
 console.log(foo); // {name: "Ramos"}
@@ -150,12 +150,12 @@ console.log(foo); // {name: "Ramos"}
 
 ```jsx
 var circle = {
-	radius: 5, // 프로퍼티
+  radius: 5, // 프로퍼티
 
-	// 원의 지름
-	getDiameter: function () { // 메서드
-		return 2 * this.radius; // this는 circle을 가리킴
-	}
+  // 원의 지름
+  getDiameter: function () { // 메서드
+    return 2 * this.radius; // this는 circle을 가리킴
+  }
 };
 
 console.log(circle.getDiameter()); // 10
@@ -168,7 +168,7 @@ console.log(circle.getDiameter()); // 10
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 console.log(person.name); // Ramos
@@ -188,7 +188,7 @@ console.log(person.age); // undefined
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 person.name = 'Kim';
@@ -202,7 +202,7 @@ console.log(person); // {name: "Kim"}
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 // person 객체에는 age 프로퍼티가 존재하지 않는다.
