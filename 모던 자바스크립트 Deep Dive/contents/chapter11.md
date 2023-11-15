@@ -204,7 +204,7 @@ A.
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 ```
 
@@ -219,7 +219,7 @@ var person = {
 ```jsx
 // 할당이 이뤄지는 시점에 객체 리터럴이 해석되고, 그 결과 객체가 생성된다.
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 // person 변수에 저장되어 있는 참조 값으로 실제 객체에 접근한다.
@@ -233,7 +233,7 @@ console.log(person); // {name: "Ramos"}
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 // 프로퍼티 값 갱신
@@ -298,7 +298,7 @@ console.log(c2 === o); // true
 
 ```jsx
 var person = {
-	name: 'Ramos'
+  name: 'Ramos'
 };
 
 // 참조 값을 복사(얕은 복사)
@@ -313,7 +313,7 @@ var copy = person;
 
 ```javascript
 var person = {
-	name: 'Ramos'
+  name: 'Ramos'
 };
 
 // 참조 값을 복사(얕은 복사). copy와 person은 동일한 참조 값을 갖는다.
@@ -340,11 +340,11 @@ console.log(copy); // {name: "Sergio", address: "Seoul"}
 
 ```javascript
 var person1 = {
-	name: 'Ramos'
+  name: 'Ramos'
 };
 
 var person2 = {
-	name: 'Ramos'
+  name: 'Ramos'
 };
 
 console.log(person1 === person2); // false
