@@ -48,7 +48,7 @@ JavaScript는 프로토타입 기반 객체지향 언어로서 클래스 기반 
 
 ```jsx
 var person = {
-  name: 'Ramos'
+  name: 'Ramos',
   sayHello: function() {
     console.log(`Hello! My name is ${this.name}.`);
   }
@@ -218,7 +218,7 @@ console.log(person); // {name: "Ramos", age: 20}
 
 ```jsx
 var person = {
-		name: 'Ramos'
+  name: 'Ramos'
 };
 
 // 프로퍼티 동적 생성
@@ -243,7 +243,7 @@ var x = 1, y = 2;
 
 var obj = {
   x: x,
-	y: y
+  y: y
 };
 
 console.log(obj); // {x: 1, y: 2}
@@ -281,9 +281,9 @@ let i = 0;
 
 // 객체 리터럴 내부에서 계산된 프로퍼티 이름으로 프로퍼티 키를 동적 생성
 const obj = {
-	[`${prefix}-${++i}`]: i,
-	[`${prefix}-${++i}`]: i,
-	[`${prefix}-${++i}`]: i
+  [`${prefix}-${++i}`]: i,
+  [`${prefix}-${++i}`]: i,
+  [`${prefix}-${++i}`]: i
 };
 
 console.log(obj); // {prop-1: 1, prop-2: 2, prop-3: 3}
@@ -293,21 +293,21 @@ console.log(obj); // {prop-1: 1, prop-2: 2, prop-3: 3}
 ```javascript
 // ES5
 var obj = {
-	name: 'Ramos',
-	sayHi: function() {
-		console.log('Hi! ' + this.name);
-	}
+  name: 'Ramos',
+  sayHi: function() {
+    console.log('Hi! ' + this.name);
+  }
 };
 
 obj.sayHi(); // Hi! Ramos
 
 // ES6
 const obj = {
-	name: 'Ramos',
-	// 메서드 축약 표현
-	sayHi: {
-		console.log('Hi! ' + this.name);
-	}
+  name: 'Ramos',
+  // 메서드 축약 표현
+  sayHi: {
+    console.log('Hi! ' + this.name);
+  }
 };
 
 obj.sayHi(); // Hi! Ramos
