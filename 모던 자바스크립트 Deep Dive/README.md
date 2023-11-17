@@ -10,7 +10,7 @@
 - [11장. 원시 값과 객체의 비교](./contents/chapter11.md)
 - [12장. 함수](./contents/chapter12.md)
 - [13장. 스코프](./contents/chapter13.md)
-- 14장. 전역 변수의 문제점
+- [14장. 전역 변수의 문제점](./contents/chapter14.md)
 - 15장. let, const 키워드와 블록 레벨 스코프
 - 16장. 프로퍼티 어트리뷰트
 - 17장. 생성자 함수에 의한 객체 생성
