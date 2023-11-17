@@ -393,3 +393,61 @@ function workWithUnsafeParam(param: unknown) {
 참고로 `never`는 `void`와 다르다. `void`는 아무것도 반환하지 않는 함수를 위한 것이고, `never`는 절대 반환하지 않는 함수를 위한 것이다.
 
 ## 함수 오버로드
+일부 JavaScript 함수는 선택적 매개변수와 나머지 매개변수만으로 표현할 수 없는 매우 다른 매개변수들로 호출될 수 있다. 이러한 함수는 **오버로드 시그니처**라고 불리는 TypeScript 구문으로 설명할 수 있다.
+
+즉, 하나의 최종 **구현 시그니처**와 그 함수 본문 앞에 서로 다른 버전의 함수 이름, 매개변수, 반환 타입은 여러 번 선언한다.
+
+오버로드된 함수 호출에 대해 구문 오류를 생성할지 여부를 결정할 때 TypeScript는 함수의 오버로드 시그니처만 확인한다. 구현 시그니처는 함수의 내부 로직에서만 사용된다.
+
+다음 `createDate` 함수는 1개의 `timestamp` 매개변수 또는 3개의 매개변수(`month`, `day`, `year`)를 사용해 호출한다. 허용된 수의 인수를 사용해 호출할 수 있지만 2개의 인수를 사용해 호출하면 2개의 인수를 허용하는 오버로드 시그니처가 없기 때문에 타입 오류가 발생한다.
+
+다음 예제의 처음 두 줄은 오버로드 시그니처이고 세 번째 줄은 구현 시그니처 코드다.
+
+```typescript
+function createDate(timestamp: number): Date;
+function createDate(timestamp: number, day: number, year: number): Date;
+function createDate(monthOrTimestamp: number, day?: number, year?: number) {
+  return day === undefined || year === undefined
+      ? new Date(monthOrTimestamp)
+      : new Date(year, monthOrTimestamp, day);
+}
+
+createDate(554356800); // Ok
+createDate(7, 27, 1987); // Ok
+
+createDate(4, 1);
+//
+// Error: No overload expects 2 arguments, but overloads
+// do exist that expect either 1 or 3 arguments.
+```
+
+TypeScript를 컴파일해 JavaScript로 출력하면 다른 타입 시스템 구문처럼 오버로드 시그니처도 지워진다. 위 예제는 다음 JavaScript처럼 컴파일된다.
+
+```javascript
+function createDate(monthOrTimestamp, day, year) {
+  return day === undefined || year === undefined
+      ? new Date(monthOrTimestamp)
+      : new Date(year, monthOrTimestamp, day);
+}
+```
+
+함수 오버로드는 복잡하고 설명하기 어려운 함수 타입에 사용하는 최후의 수단이다. 함수를 단순하게 유지하고 가능하면 함수 오버로드를 사용하지 않는 것이 좋다.
+
+### 호출 시그니처 호환성
+오버로드된 함수의 구현에서 사용되는 구현 시그니처는 매개변수 타입과 반환 타입에 사용하는 것과 동일하다. 따라서 함수의 오버로드 시그니처에 있는 반환 타입과 각 매개변수는 구현 시그니처에 있는 동일한 인덱스의 매개변수에 할당할 수 있어야 한다. 즉, 구현 시그니처는 모든 오버로드 시그니처와 호환되어야 한다.
+
+다음 `format` 함수의 구현 시그니처는 첫 번째 매개변수를 `string`으로 선언한다. 처음 두 개의 오버로드 시그니처는 `string` 타입과 호환되지만, 세 번째 오버로드 시그니처의 `() => string` 타입과는 호환되지 않는다.
+
+```typescript
+function format(data: string): string; // Ok
+function format(data: string, needle: string, haystack: string): string; // Ok
+
+function format(getData: () => string): string;
+//
+// Error: This overload signature is not compatible with its implementation
+// signature.
+
+function format(data: string, needle?: string, haystack?: string) {
+  return needle && haystack ? data.replace(needle, haystack) : data;
+}
+```
