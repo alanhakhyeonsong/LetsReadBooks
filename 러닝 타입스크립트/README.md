@@ -7,7 +7,7 @@
   - [Chapter 3. 유니언과 리터럴](./contents/chapter03.md)
   - [Chapter 4. 객체](./contents/chapter04.md)
 - Part 2 : 특징
-  - Chapter 5. 함수
+  - [Chapter 5. 함수](./contents/chapter05.md)
   - Chapter 6. 배열
   - Chapter 7. 인터페이스
   - Chapter 8. 클래스
