@@ -8,7 +8,7 @@
   - [Chapter 4. 객체](./contents/chapter04.md)
 - Part 2 : 특징
   - [Chapter 5. 함수](./contents/chapter05.md)
-  - Chapter 6. 배열
+  - [Chapter 6. 배열](./contents/chapter06.md)
   - Chapter 7. 인터페이스
   - Chapter 8. 클래스
   - Chapter 9. 타입 제한자
