@@ -4,7 +4,7 @@
 - [5장. 표현식과 문](./contents/chapter05.md)
 - [6장. 데이터 타입](./contents/chapter06.md)
 - 7장. 연산자
-- 8장. 제어문
+- [8장. 제어문](./contents/chapter08.md)
 - [9장. 타입 변환과 단축 평가](./contents/chapter09.md)
 - [10장. 객체 리터럴](./contents/chapter10.md)
 - [11장. 원시 값과 객체의 비교](./contents/chapter11.md)
