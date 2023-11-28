@@ -73,7 +73,7 @@ const circle2 = new Circle(2);
 
 // Circle 생성자 함수가 생성한 모든 인스턴스는 부모 객체의 역할을 하는
 // 프로토타입 Circle.prototype으로부터 getArea 메서드를 상속받는다.
-// 즉, Circle 생성자 함수가 생성하는 모든 인스턴스는 하나의 getArea 메서드를 공유하낟.
+// 즉, Circle 생성자 함수가 생성하는 모든 인스턴스는 하나의 getArea 메서드를 공유한다.
 console.log(circle1.getArea === circle2.getArea); // true
 
 console.log(circle1.getArea()); // 3.141592...
@@ -238,7 +238,7 @@ console.log(Person.prototype === me.__proto__); // true
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/5db33ee5-ba78-48f1-8cd5-27705bde2304)
 
-### 프로토타이브이 constructor 프로퍼티와 생성자 함수
+### 프로토타입의 constructor 프로퍼티와 생성자 함수
 모든 프로토타입은 `constructor` 프로퍼티를 갖는다. 이 `constructor` 프로퍼티는 `prototype` 프로퍼티로 자신을 참조하고 있는 생성자 함수를 가리킨다. **이 연결은 생성자 함수가 생성될 때, 즉 함수 객체가 생성될 때 이뤄진다.**
 
 ```javascript
