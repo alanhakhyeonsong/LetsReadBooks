@@ -179,7 +179,6 @@ console.log(circle); // Circle {radius: 1, getDiameter: f}
 ```
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/ae4b4569-5171-4759-803c-60d45393cd54)
-\
 
 만약 `this`가 아닌 다른 객체를 명시적으로 반환하면 `this`가 반환되지 못하고 `return` 문에 명시한 객체가 반환된다.
 
