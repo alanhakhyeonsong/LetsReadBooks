@@ -13,7 +13,7 @@
 - [14장. 전역 변수의 문제점](./contents/chapter14.md)
 - [15장. let, const 키워드와 블록 레벨 스코프](./contents/chapter15.md)
 - [16장. 프로퍼티 어트리뷰트](./contents/chapter16.md)
-- 17장. 생성자 함수에 의한 객체 생성
+- [17장. 생성자 함수에 의한 객체 생성](./contents/chapter17.md)
 - [18장. 함수와 일급 객체](./contents/chapter18.md)
 - 19장. 프로토타입
 - 21장. 빌트인 객체
