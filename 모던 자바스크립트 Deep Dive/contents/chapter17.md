@@ -178,6 +178,9 @@ const circle = new Circle(1);
 console.log(circle); // Circle {radius: 1, getDiameter: f}
 ```
 
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/ae4b4569-5171-4759-803c-60d45393cd54)
+\
+
 만약 `this`가 아닌 다른 객체를 명시적으로 반환하면 `this`가 반환되지 못하고 `return` 문에 명시한 객체가 반환된다.
 
 ```javascript
@@ -244,7 +247,7 @@ foo.method = function () {
 foo.method(); // 10
 ```
 
-함수는 객체이지만 일반 개겣와는 다르다. **일반 객체는 호출할 수 없지만 함수는 호출할 수 있다.**
+함수는 객체이지만 일반 객체와는 다르다. **일반 객체는 호출할 수 없지만 함수는 호출할 수 있다.**
 
 따라서 함수 객체는 일반 객체가 가지고 있는 내부 슬롯과 내부 메서드는 물론, 함수로서 동작하기 위해 함수 객체만을 위한 `[[Environment]]`, `[[FormalParameters]]` 등의 내부 슬롯과 `[[Call]]`, `[[Construct]]` 같은 내부 메서드를 추가로 가지고 있다.
 
