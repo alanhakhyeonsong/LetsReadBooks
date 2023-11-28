@@ -85,7 +85,7 @@ const person = {
   },
 
   // setter 함수
-  get fullName(name) {
+  set fullName(name) {
     // 배열 디스트럭처링 할당
     [this.firstName, this.lastName] = name.split(' ');
   }
