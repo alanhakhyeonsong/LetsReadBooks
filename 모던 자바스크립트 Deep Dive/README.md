@@ -15,7 +15,7 @@
 - [16장. 프로퍼티 어트리뷰트](./contents/chapter16.md)
 - [17장. 생성자 함수에 의한 객체 생성](./contents/chapter17.md)
 - [18장. 함수와 일급 객체](./contents/chapter18.md)
-- 19장. 프로토타입
+- [19장. 프로토타입](./contents/chapter19.md)
 - 21장. 빌트인 객체
 - 22장. this
 - 23장. 실행 컨텍스트
