@@ -879,7 +879,7 @@ Person.staticMethod(); // staticMethod
 me.staticMethod(); // TypeError: me.staticMethod is not a function
 ```
 
-**`Person` 생성자 함수는 객체이므로 자신의 프로퍼티/메서드를 소우할 수 있다.** 생성자 함수 객체가 소유한 프로퍼티/메서드를 정적 프로퍼티/메서드라고 한다. 정적 프로퍼티/메서드는 생성자 함수가 생성한 인스턴스로 참조/호출할 수 없다.
+**`Person` 생성자 함수는 객체이므로 자신의 프로퍼티/메서드를 소유할 수 있다.** 생성자 함수 객체가 소유한 프로퍼티/메서드를 정적 프로퍼티/메서드라고 한다. 정적 프로퍼티/메서드는 생성자 함수가 생성한 인스턴스로 참조/호출할 수 없다.
 
 ![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/87262498-e29c-4c78-801b-6fb283b05570)
 
