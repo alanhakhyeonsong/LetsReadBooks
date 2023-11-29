@@ -17,7 +17,7 @@
 - [18장. 함수와 일급 객체](./contents/chapter18.md)
 - [19장. 프로토타입](./contents/chapter19.md)
 - [21장. 빌트인 객체](./contents/chapter21.md)
-- 22장. this
+- [22장. this](./contents/chapter22.md)
 - 23장. 실행 컨텍스트
 - 24장. 클로저
 - 25장. 클래스
