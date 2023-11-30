@@ -18,7 +18,7 @@
 - [19장. 프로토타입](./contents/chapter19.md)
 - [21장. 빌트인 객체](./contents/chapter21.md)
 - [22장. this](./contents/chapter22.md)
-- 23장. 실행 컨텍스트
+- [23장. 실행 컨텍스트](./contents/chapter23.md)
 - 24장. 클로저
 - 25장. 클래스
 - 26장. ES6 함수의 추가 기능
