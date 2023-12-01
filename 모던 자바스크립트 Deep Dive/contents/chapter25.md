@@ -909,6 +909,26 @@ class Derived extends Base {
 }
 ```
 
+`super`는 자신을 참조하고 있는 메서드(`Dervied`의 `sayHi`)가 바인딩되어 있는 객체(`Derived.prototype`)의 프로토타입(`Base.prototype`)을 가리킨다. 따라서 `super.sayHi`는 `Base.prototype.sayHi`를 가리킨다. 단, `super.sayHi`, 즉 `Base.prototype.sayHi`를 호출할 때 `call` 메서드를 사용해 `this`를 전달해야 한다.
+
+`call` 메서드를 사용해 `this`를 전달하지 않고 `Base.prototype.sayHi`를 그대로 호출하면 `Base.prototype.sayHi` 메서드 내부의 `this`는 `Base.prototype`을 가리킨다. `Base.prototype.sayHi` 메서드는 프로토타입 메서드이기 때문에 내부의 `this`는 `Base.prototype`이 아닌 인스턴스를 가리켜야 한다. `name` 프로퍼티는 인스턴스에 존재하기 때문이다.
+
+이처럼 **`super` 참조가 동작하기 위해서는 `super`를 참조하고 있는 메서드(`Derived`의 `sayHi`)가 바인딩되어 있는 객체(`Derived.prototype`)의 프로토타입(`Base.prototype`)을 찾을 수 있어야 한다.** 이를 위해 **메서드는 내부 슬롯 `[[HomeObject]]`를 가지며, 자신을 바인딩하고 있는 객체를 가리킨다.**
+
+`super` 참조를 의사 코드로 표현하면 다음과 같다.
+
+```javascript
+/*
+[[HomeObject]]는 메서드 자신을 바인딩하고 있는 객체를 가리킨다.
+[[HomeObject]]를 통해 메서드 자신을 바인딩하고 있는 객체의 프로토타입을 찾을 수 있다.
+예를 들어, Derived 클래스의 sayHi 메서드는 Derived.prototype에 바인딩되어 있다.
+따라서 Derived 클래스의 sayHi 메서드의 [[HomeObject]]는 Dervied.prototype이고
+이를 통해 Derived 클래스의 sayHi 메서드 내부의 super 참조가 Base.prototype으로 결정된다.
+따라서 super.sayHi는 Base.prototype.sayHi를 가리키게 된다.
+*/
+super = Object.getPrototypeOf([[HomeObject]])
+```
+
 주의할 것은 ES6의 메서드 축약 표현으로 정의된 함수만이 `[[HomeObject]]`를 갖는다는 것이다.
 
 ```javascript
@@ -921,6 +941,10 @@ const obj = {
   bar: function () {}
 }
 ```
+
+`[[HomeObject]]`를 가지는 함수만이 `super` 참조를 할 수 있다. 따라서 `[[HomeObject]]`를 가지는 ES6의 메서드 축약 표현으로 정의된 함수만이 `super`를 참조를 할 수 있다. 단, `super` 참조는 수퍼클래스의 메서드를 참조하기 위해 사용하므로 서브클래스의 메서드에서 사용해야 한다.
+
+`super` 참조는 클래스의 전유물은 아니다. 객체 리터럴에서도 `super` 참조를 사용할 수 있다. 단, ES6의 메서드 축약 표현으로 정의된 함수만 가능하다.
 
 ```javascript
 const base = {
