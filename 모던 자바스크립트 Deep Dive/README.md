@@ -20,7 +20,7 @@
 - [22장. this](./contents/chapter22.md)
 - [23장. 실행 컨텍스트](./contents/chapter23.md)
 - [24장. 클로저](./contents/chapter24.md)
-- 25장. 클래스
+- [25장. 클래스](./contents/chapter25.md)
 - 26장. ES6 함수의 추가 기능
 - 33장. 7번째 데이터 타입 Symbol
 - 34장. 이터러블
