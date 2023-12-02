@@ -36,12 +36,12 @@ function makeCounter(aux) {
 }
 
 // 3. 함수는 매개변수에 전달할 수 있다.
-const increaser = makeCounter(aux.increase);
+const increaser = makeCounter(auxs.increase);
 console.log(increaser()); // 1
-console.log(increaser()); // 1
+console.log(increaser()); // 2
 
 // 3. 함수는 매개변수에 전달할 수 있다.
-const increaser = makeCounter(aux.decrease);
+const increaser = makeCounter(auxs.decrease);
 console.log(decreaser()); // -1
 console.log(decreaser()); // -2
 ```
