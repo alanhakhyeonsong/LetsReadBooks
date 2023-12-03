@@ -3,7 +3,7 @@
 - [4장. 변수](./contents/chapter04.md)
 - [5장. 표현식과 문](./contents/chapter05.md)
 - [6장. 데이터 타입](./contents/chapter06.md)
-- 7장. 연산자
+- [7장. 연산자](./contents/chapter07.md)
 - [8장. 제어문](./contents/chapter08.md)
 - [9장. 타입 변환과 단축 평가](./contents/chapter09.md)
 - [10장. 객체 리터럴](./contents/chapter10.md)
