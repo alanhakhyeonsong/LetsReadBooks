@@ -285,7 +285,31 @@ console.log(prefixer.add(['transition', 'user-select']));
 // ... (정리중)
 
 ### super
+화살표 함수는 함수 자체의 `super` 바인딩을 갖지 않는다. 따라서 화살표 함수 내부에서 `super`를 참조하면 `this`와 마찬가지로 상위 스코프의 `super`를 참조한다.
 
+```javascript
+class Base {
+  constructor(name) {
+    this.name = name;
+  }
+
+  sayHi() {
+    return `Hi! ${this.name}`;
+  }
+}
+
+class Derived extends Base {
+  // 화살표 함수의 super는 상위 스코프인 constructor의 super를 가리킨다.
+  sayHi = () => `${super.sayHi()} how are you doing?`;
+}
+
+const derived = new Derived('Ramos');
+console.log(derived.sayHi()); // Hi! Ramos how are you doing?
+```
+
+`super`는 내부 슬롯 `[[HomeObject]]`를 갖는 ES6 메서드 내에서만 사용할 수 있는 키워드다. `sayHi` 클래스 필드에 할당한 화살표 함수는 ES6 메서드는 아니지만 함수 자체의 `super` 바인딩을 갖지 않으므로 `super`를 참조해도 에러가 발생하지 않고 `constructor`의 `super` 바인딩을 참조한다.
+
+`this`와 마찬가지로 클래스 필드에 할당한 화살표 함수 내부에서 `super`를 참조하면 `constructor` 내부의 `super` 바인딩을 참조한다.
 
 ### arguments
 화살표 함수는 함수 자체의 `arguments` 바인딩을 갖지 않는다. 따라서 화살표 함수 내부에서 `arguments`를 참조하면 `this`와 마찬가지로 상위 스코프의 `arguments`를 참조한다.
