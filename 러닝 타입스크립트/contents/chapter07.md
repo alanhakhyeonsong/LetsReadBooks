@@ -364,3 +364,154 @@ myNovel = {
 ```
 
 ## 인터페이스 확장
+때로는 서로 형태가 비슷한 여러 개의 인터페이스를 갖게 된다. 예를 들면 다른 인터페이스의 모든 멤버를 포함하고, 거기에 몇 개의 멤버가 추가된 인터페이스인 경우다.
+
+TypeScript는 인터페이스가 다른 인터페이스의 모든 멤버를 복사해서 선언할 수 있는 **확장된 인터페이스**를 허용한다. 확장된 인터페이스의 이름 뒤에 `extends` 키워드를 추가해서 다른 인터페이스를 확장한 인터페이스라는 걸 표시한다. 이렇게 하면 파생 인터페이스를 준수하는 모든 객체가 기본 인터페이스의 모든 멤버도 가져야 한다는 것을 TypeScript에게 알려준다.
+
+```typescript
+interface Writing {
+  title: string;
+}
+
+interface Novella extends Writing {
+  pages: number;
+}
+
+// Ok
+let myNovella: Novella = {
+  pages: 195,
+  title: "Ethan Frome",
+};
+
+let missingPages: Novella = {
+  // Error: Property 'pages' is missing in type '{ title: string; }' but required in type 'Novella'.
+  title: "Ethan Frome",
+};
+
+let extraProperty: Novella = {
+  // Error: Type '{ pages: number; stragegy: string; style: string; }'
+  // is not assignable to type 'Novella'.
+  //   Object literal my only specify known properties,
+  //   and 'strategy' does not exist in type 'Novella'.
+  pages: 300,
+  strategy: "baseline",
+  style: "Naturalism",
+};
+```
+
+- 인터페이스 확장은 프로젝트의 한 엔티티 타입이 다른 엔티티의 모든 멤버를 포함하는 상위 집합을 나타내는 실용적인 방법이다.
+- 인터페이스 확장 덕분에 여러 인터페이스에 관계를 나타내기 위해 동일한 코드를 반복 입력하는 작업을 피할 수 있다.
+
+### 재정의된 속성
+파생 인터페이스는 다른 타입으로 속성을 다시 선언해 기본 인터페이스의 속성을 재정의하거나 대체할 수 있다. TypeScript의 타입 검사기는 재정의된 속성이 기본 속성에 할당되어 있도록 강요한다. 이렇게 하면 파생 인터페이스 타입의 인스턴스를 기본 인터페이스 타입에 할당할 수 있다.
+
+속성을 재선언하는 대부분의 파생 인터페이스는 해당 속성을 유니언 타입의 더 구체적인 하위 집합으로 만들거나 속성을 기본 인터페이스의 타입에서 확장된 타입으로 만들기 위해 사용한다.
+
+```typescript
+interface WithNullableName {
+  name: string | null;
+}
+
+interface WithNonNullableName extends WithNullableName {
+  name: string;
+}
+
+interface WithNumericName extends WithNullableName {
+  // Error: Interface 'WithNumericName' incorrectly extends interface
+  // 'WithNullableName'.
+  //   Types of property 'name' are incompatible.
+  //     Type 'string | number' is not assignable to type 'string | null'.
+  //       Type 'number' is not assignable to type 'string'.
+  name: number | string;
+}
+```
+
+`WithNullableName` 타입은 `WithNonNullableName`에서 `null`을 허용하지 않도록 적절하게 다시 설정된다. 그러나 `WithNumericName`의 `name`에는 `number | string`이 허용되지 않는다. `number | string`은 `string | null`에 할당할 수 없기 때문이다.
+
+### 다중 인터페이스 확장
+TypeScript의 인터페이스는 여러 개의 다른 인터페이스를 확장해서 선언할 수 있다.
+
+```typescript
+interface GivesNumber {
+  giveNumber(): number;
+}
+
+interface GivesString {
+  giveString(): string;
+}
+
+interface GivesBothAndEither extends GivesNumber, GivesString {
+  giveEither(): number | string;
+}
+
+function useGivesBoth(instance: GivesBothAndEither) {
+  instance.giveEither(); // 타입: number | string
+  instance.giveNumber(); // 타입: number
+  instance.giveString(); // 타입: string
+}
+```
+
+여러 인터페이스를 확장하는 방식으로 인터페이스를 사용하면 코드 중복을 줄이고 다른 코드 영역에서 객체의 형태를 더 쉽게 재사용할 수 있다.
+
+## 인터페이스 병합
+인터페이스의 중요한 특징 중 하나는 서로 병합하는 능력이다. 두 개의 인터페이스가 동일한 이름으로 동일한 스코프에 선언된 경우, 선언된 모든 필드를 포함하는 더 큰 인터페이스가 코드에 추가된다.
+
+```typescript
+interface Merged {
+  fromFirst: string;
+}
+
+interface Merged {
+  fromSecond: string;
+}
+
+// 아래와 같음
+// interface Merged {
+//   fromFirst: string;
+//   fromSecond: string;
+// }
+```
+
+일반적인 TypeScript 개발에선 인터페이스 병합을 자주 사용하진 않는다. 코드를 이해하기 어려워지므로 가능하면 사용하지 않는 것이 좋다.
+
+그러나 인터페이스 병합은 외부 패키지 또는 `Window` 같은 내장된 전역 인터페이스를 보강하는 데 특히 유용하다.
+
+```typescript
+interface Window {
+  myEnvironmentVariable: string;
+}
+
+window.myEnvironmentVariable; // 타입: string
+```
+
+### 이름이 충돌되는 멤버
+병합된 인터페이스는 타입이 다른 동일한 이름의 속성을 여러 번 선언할 수 없다. 속성이 이미 인터페이스에 선언되어 있다면 나중에 병합된 인터페이스에서도 동일한 타입을 사용해야 한다.
+
+다음 두 개의 인터페이스 선언에는 `same` 속성이 모두 동일하므로 문제 없지만 `different` 속성은 타입이 서로 다르기 때문에 오류가 발생한다.
+
+```typescript
+interface MergedProperties {
+  same: (input: boolean) => string;
+  different: (input: string) => string;
+}
+
+interface MergedProperties {
+  same: (input: boolean) => string; // Ok
+  different: (input: number) => string;
+  // Error: Subsequent property declarations must have the same type.
+  // Property 'different' must be of type '(input: string) => string',
+  // but here has type '(input: number) => string'.
+}
+```
+
+그러나 **병합된 인터페이스는 동일한 이름과 다른 시그니처를 가진 메서드는 정의할 수 있다**. 이렇게 하면 메서드에 대한 함수 오버로드가 발생한다.
+
+```typescript
+interface MergedMethods {
+  different(input: string): string;
+}
+
+interface MergedMethods {
+  different(input: number): string; // Ok
+}
+```
