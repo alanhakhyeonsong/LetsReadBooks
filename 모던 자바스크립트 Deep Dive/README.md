@@ -23,7 +23,7 @@
 - [25장. 클래스](./contents/chapter25.md)
 - [26장. ES6 함수의 추가 기능](./contents/chapter26.md)
 - 33장. 7번째 데이터 타입 Symbol
-- 34장. 이터러블
+- [34장. 이터러블](./contents/chapter34.md)
 - 35장. 스프레드 문법
 - 36장. 디스트럭처링 할당
 - 37장. Set과 Map
