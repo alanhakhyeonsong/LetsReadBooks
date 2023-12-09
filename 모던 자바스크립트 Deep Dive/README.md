@@ -24,7 +24,7 @@
 - [26장. ES6 함수의 추가 기능](./contents/chapter26.md)
 - [33장. 7번째 데이터 타입 Symbol](./contents/chapter33.md)
 - [34장. 이터러블](./contents/chapter34.md)
-- 35장. 스프레드 문법
+- [35장. 스프레드 문법](./contents/chapter35.md)
 - 36장. 디스트럭처링 할당
 - 37장. Set과 Map
 - 41장. 타이머
