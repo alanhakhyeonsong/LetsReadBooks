@@ -25,7 +25,7 @@
 - [33장. 7번째 데이터 타입 Symbol](./contents/chapter33.md)
 - [34장. 이터러블](./contents/chapter34.md)
 - [35장. 스프레드 문법](./contents/chapter35.md)
-- 36장. 디스트럭처링 할당
+- [36장. 디스트럭처링 할당](./contents/chapter36.md)
 - 37장. Set과 Map
 - 41장. 타이머
 - [42장. 비동기 프로그래밍](./contents/chapter42.md)
