@@ -140,8 +140,8 @@ const timeoutId = setInterval(() => {
   </div>
   <script>
     const $container = document.querySelector('.container');
-    const normalCount = document.querySelector('.normal-count');
-    const throttleCount = document.querySelector('.throttle-count');
+    const $normalCount = document.querySelector('.normal-count');
+    const $throttleCount = document.querySelector('.throttle-count');
 
     const throttle = (callback, delay) => {
       let timerId;
