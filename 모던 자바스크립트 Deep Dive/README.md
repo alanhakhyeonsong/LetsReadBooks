@@ -27,7 +27,7 @@
 - [35장. 스프레드 문법](./contents/chapter35.md)
 - [36장. 디스트럭처링 할당](./contents/chapter36.md)
 - 37장. Set과 Map
-- 41장. 타이머
+- [41장. 타이머](./contents/chapter41.md)
 - [42장. 비동기 프로그래밍](./contents/chapter42.md)
 - [45장. 프로미스](./contents/chapter45.md)
 - [46장. 제너레이터와 async/await](./contents/chapter46.md)
