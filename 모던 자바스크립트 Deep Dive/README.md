@@ -31,4 +31,4 @@
 - [42장. 비동기 프로그래밍](./contents/chapter42.md)
 - [45장. 프로미스](./contents/chapter45.md)
 - [46장. 제너레이터와 async/await](./contents/chapter46.md)
-- 47장. 에러 처리
+- [47장. 에러 처리](./contents/chapter47.md)
