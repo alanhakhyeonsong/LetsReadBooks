@@ -10,7 +10,7 @@
   - [Chapter 5. 함수](./contents/chapter05.md)
   - [Chapter 6. 배열](./contents/chapter06.md)
   - [Chapter 7. 인터페이스](./contents/chapter07.md)
-  - Chapter 8. 클래스
+  - [Chapter 8. 클래스](./contents/chapter08.md)
   - Chapter 9. 타입 제한자
   - Chapter 10. 제네릭
 - Part 3 : 사용법
