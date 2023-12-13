@@ -11,7 +11,7 @@
   - [Chapter 6. 배열](./contents/chapter06.md)
   - [Chapter 7. 인터페이스](./contents/chapter07.md)
   - [Chapter 8. 클래스](./contents/chapter08.md)
-  - Chapter 9. 타입 제한자
+  - [Chapter 9. 타입 제한자](./contents/chapter09.md)
   - Chapter 10. 제네릭
 - Part 3 : 사용법
   - Chapter 11. 선언 파일
