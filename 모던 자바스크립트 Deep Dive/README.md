@@ -32,3 +32,4 @@
 - [45장. 프로미스](./contents/chapter45.md)
 - [46장. 제너레이터와 async/await](./contents/chapter46.md)
 - [47장. 에러 처리](./contents/chapter47.md)
+- [48장. 모듈](./contents/chapter48.md)
