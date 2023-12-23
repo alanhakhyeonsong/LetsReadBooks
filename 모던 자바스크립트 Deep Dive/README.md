@@ -22,6 +22,7 @@
 - [24장. 클로저](./contents/chapter24.md)
 - [25장. 클래스](./contents/chapter25.md)
 - [26장. ES6 함수의 추가 기능](./contents/chapter26.md)
+- [27장. 배열](./contents/chapter27.md)
 - [33장. 7번째 데이터 타입 Symbol](./contents/chapter33.md)
 - [34장. 이터러블](./contents/chapter34.md)
 - [35장. 스프레드 문법](./contents/chapter35.md)
