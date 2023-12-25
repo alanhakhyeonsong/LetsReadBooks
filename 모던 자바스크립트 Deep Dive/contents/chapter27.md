@@ -461,5 +461,313 @@ console.log(arr); // [1]
 ```
 
 ```javascript
+class Stack {
+  #array;
 
+  constructor(array = []) {
+    if (!Array.isArray(array)) {
+      throw new TypeError(`${array} is not an array.`);
+    }
+    this.#array = array;
+  }
+
+  // 스택의 가장 마지막에 데이터를 밀어 넣는다.
+  push(value) {
+    return this.#array.push(value);
+  }
+
+  // 스택의 가장 마지막 데이터를 꺼낸다.
+  pop() {
+    return this.#array.pop();
+  }
+
+  // 스택의 복사본 배열을 반환한다.
+  entries() {
+    return [...this.#array];
+  }
+}
+
+const stack = new Stack([1, 2]);
+console.log(stack.entries()); // [1, 2]
+
+stack.push(3);
+console.log(stack.entries()); // [1, 2, 3]
+
+stack.pop();
+console.log(stack.entries()); // [1, 2]
 ```
+
+### Array.prototype.unshift
+인수로 전달받은 모든 값을 원본 배열의 선두에 요소로 추가하고 변경된 `length` 프로퍼티 값을 반환한다. `unshift`는 원본 배열을 직접 변경한다.
+
+```javascript
+const arr = [1, 2];
+
+let result = arr.unshift(3, 4);
+console.log(result); // 4
+
+console.log(arr); // [3, 4, 1, 2]
+```
+
+`unshift`는 원본 배열을 직접 변경하는 부수 효과가 있다. 따라서 ES6의 스프레드 문법을 사용하는 편이 좋다.
+
+```javascript
+const arr = [1, 2];
+
+const newArr = [3, ...arr];
+console.log(newArr); // [3, 1, 2]
+```
+
+### Array.prototype.shift
+`shift`는 원본 배열에서 첫 번째 요소를 제거하고 제거한 요소를 반환한다. 원본 배열이 빈 배열이면 `undefined`를 반환한다. `shift` 메서드는 원본 배열을 직접 변경한다.
+
+```javascript
+const arr = [1, 2];
+
+let result = arr.shift();
+console.log(result); // 1
+
+console.log(arr); // [2]
+```
+
+```javascript
+const Queue = (function () {
+  function Queue(array = []) {
+    if (!Array.isArray(array)) {
+      throw new TypeError(`${array} is not an array.`);
+    }
+    this.array = array;
+  }
+
+  Queue.prototype = {
+    constructor: Queue,
+
+    enqueue(value) {
+      return this.array.push(value);
+    },
+
+    dequeue() {
+      return this.array.shift();
+    },
+
+    entries() {
+      return [...this.array];
+    }
+  };
+
+  return Queue;
+}());
+
+const queue = new Queue([1, 2]);
+console.log(queue.entries()); // [1, 2]
+
+queue.enqueue(3);
+console.log(queue.entries()); // [1, 2, 3]
+
+queue.dequeue()
+console.log(queue.entries()); // [2, 3]
+```
+
+### Array.prototype.concat
+`concat` 메서드는 인수로 전달된 값들(배열 또는 원시값)을 원본 배열의 마지막 요소로 추가한 새로운 배열을 반환한다. 인수로 전달한 값이 배열인 경우 배열을 해체하여 새로운 배열의 요소로 추가한다. 원본 배열은 변경되지 않는다.
+
+```javascript
+const arr1 = [1, 2];
+const arr2 = [3, 4];
+
+let result = arr1.concat(arr2);
+console.log(result); // [1, 2, 3, 4]
+
+result = arr1.concat(3);
+console.log(result); // [1, 2, 3]
+
+result = arr1.concat(arr2, 5);
+console.log(result); // [1, 2, 3, 4, 5]
+
+console.log(arr1); // [1, 2]
+```
+
+- `push`, `unshift` 메서드는 원본 배열을 직접 변경하지만 `concat` 메서드는 원본 배열을 변경하지 않고 새로운 배열을 반환한다.
+- 인수로 전달받은 값이 배열인 경우 `push`와 `unshift`는 배열을 그대로 원본 배열의 마지막/첫 번째 요소로 추가하지만 `concat` 메서드는 인수로 전달받은 배열을 해체하여 새로운 배열의 마지막 요소로 추가한다.
+
+`concat` 메서드는 ES6의 스프레드 문법으로 대체할 수 있다.
+
+```javascript
+let result = [1, 2].concat([3, 4]);
+console.log(result); // [1, 2, 3, 4]
+
+result = [...[1, 2], ...[3, 4]];
+console.log(result); // [1, 2, 3, 4]
+```
+
+`push`, `unshift` 메서드와 `concat` 메서드를 사용하는 대신 스프레드 문법을 일관성 있게 사용하는 것을 권장한다.
+
+### Array.prototype.splice
+원본 배열의 중간에 요소를 추가하거나 중간에 있는 요소를 제거하는 경우 `splice` 메서드를 사용한다. 이 메서드는 3개의 매개변수가 있으며 원본 배열을 직접 변경한다.
+
+- `start`: 원본 배열의 요소를 제거하기 시작할 인덱스다. `start`만 지정하면 원본 배열의 `start`부터 모든 요소를 제거한다. 음수인 경우 배열의 끝에서의 인덱스를 나타낸다.
+- `deleteCount`: 원본 배열의 요소를 제거하기 시작할 인덱스인 `start`부터 제거할 요소의 개수. 0인 경우 아무런 요소도 제거되지 않는다.(옵션)
+- `items`: 제거한 위치에 삽입할 요소들의 목록. 생략할 경우 원본 배열에서 요소들을 제거하기만 한다.(옵션)
+
+```javascript
+const arr = [1, 2, 3, 4];
+
+const result = arr.splice(1, 2, 20, 30);
+
+// 제거한 요소가 배열로 반환된다.
+console.log(result); // [2, 3]
+// 원본 배열을 직접 변경
+console.log(arr); // [1, 20, 30, 4]
+```
+
+```javascript
+const arr = [1, 2, 3, 4];
+
+const result = arr.splice(1, 0, 100);
+
+console.log(arr); // [1, 100, 2, 3, 4]
+console.log(result); // []
+```
+
+```javascript
+const arr = [1, 2, 3, 4];
+
+const result = arr.splice(1, 2);
+
+console.log(arr); // [1, 4]
+console.log(result); // [2, 3]
+```
+
+```javascript
+const arr = [1, 2, 3, 4];
+const result = arr.splice(1);
+
+console.log(arr);  // [1]
+console.log(result);  // [2, 3, 4]
+```
+
+배열에서 특정 요소를 제거하려면 `indexOf` 메서드를 통해 특정 요소의 인덱스를 취득한 다음 `splice` 메서드를 사용한다.
+
+`filter` 메서드를 사용하여 특정 요소를 제거할 수도 있다. 하지만 특정 요소가 중복된 경우 모두 제거된다.
+
+```javascript
+const arr = [1, 2, 3, 1, 2];
+
+function removeAll(array, item) {
+  return array.filter(v => v !== item);
+}
+
+console.log(removeAll(arr, 2)); // [1, 3, 1]
+```
+
+### Array.prototype.slice
+`slice`는 인수로 전달된 범위의 요소들을 복사하여 배열로 반환한다. 원본 배열은 변경되지 않는다.
+
+- `start`: 복사를 시작할 인덱스. 음수인 경우 배열의 끝에서의 인덱스를 나타낸다.
+- `end`: 복사를 종료할 인덱스. 이 인덱스에 해당하는 요소는 복사되지 않는다. 생략 시 기본 값은 `length` 값이다.
+
+```javascript
+const arr = [1, 2, 3];
+
+arr.slice(0, 1); // [1]
+arr.slice(1, 2); // [2]
+console.log(arr); // [1, 2, 3]
+```
+
+```javascript
+const arr = [1, 2, 3];
+
+const copy = arr.slice();
+console.log(copy); // [1, 2, 3]
+console.log(copy === arr); // false
+```
+
+이때 생성된 복사본은 얕은 복사를 통해 생성된다.
+
+```javascript
+const todos = [
+  { id: 1, content: 'HTML', completed: false },
+  { id: 2, content: 'CSS', completed: false },
+  { id: 3, content: 'JavaScript', completed: false },
+];
+
+const _todos = todos.slice();
+// const _todos = [...todos];
+
+console.log(_todos === todos); // false
+console.log(_todos[0] === todos[0]); // true
+```
+
+### Array.prototype.join
+`join` 메서드는 원본 배열의 모든 요소를 문자열로 변환한 후, 인수로 전달받은 문자열, 즉 구분자로 연결한 문자열을 반환한다.
+
+```javascript
+const arr = [1, 2, 3, 4];
+
+// 기본 구분자는 콤마
+arr.join(); // '1,2,3,4'
+
+arr.join(''); // '1234'
+
+arr.join(':'); // '1:2:3:4'
+```
+
+### Array.prototype.reverse
+`reverse` 메서드는 원본 배열의 순서를 반대로 뒤집는다. 이때 원본 배열이 변경된다. 반환값은 변경된 배열이다.
+
+```javascript
+const arr = [1, 2, 3];
+const result = arr.reverse();
+
+console.log(arr); // [3, 2, 1]
+console.log(result); // [3, 2, 1]
+```
+
+### Array.prototype.fill
+ES6에서 도입된 `fill` 메서드는 인수로 전달받은 값을 배열의 처음부터 끝까지 요소로 채운다. 이때 원본 배열이 변경된다.
+
+```javascript
+const arr = [1, 2, 3];
+
+arr.fill(0);
+
+console.log(arr); // [0, 0, 0]
+```
+
+- 두 번째 인수로 요소 채우기를 시작할 인덱스를 전달할 수 있다.
+- 세 번째 인수로 요소 채우기를 멈출 인덱스를 전달할 수 있다.
+
+### Array.prototype.includes
+ES7에서 도입된 `includes` 메서드는 배열 내의 특정 요소가 포함되어 있는지 확인하여 `true` 또는 `false`를 반환한다. 첫 번째 인수로 검색할 대상을 지정한다.
+
+```javascript
+const arr = [1, 2, 3];
+
+arr.includes(2); // true
+```
+
+- 두 번째 인수로 검색을 시작할 인덱스를 전달할 수 있다. 생략할 경우 기본값 0이 설정된다.
+- 두 번째 인수에 음수를 전달하면 `length` 프로퍼티 값과 음수 인덱스를 합산하여 검색 시작 인덱스를 설정한다.
+- `indexOf` 메서드를 사용하면 반환값이 -1인지 확인해봐야 하고 배열에 `NaN`이 포함되어 있는지 확인할 수 없다는 문제가 있다.
+
+### Array.prototype.flat
+ES10에서 도입된 `flat` 메서드는 인수로 전달한 깊이만큼 재귀적으로 배열을 평탄화한다.
+
+```javascript
+[1, [2, 3, 4, 5]].flat(); // [1, 2, 3, 4, 5]
+```
+
+중첩 배열을 평탄화할 깊이를 인수로 전달할 수 있다. 인수를 생략할 경우 기본값은 1이다. 인수로 `Infinity`를 전달하면 중첩 배열 모두를 평탄화한다.
+
+```javascript
+[1, [2, [3, [4]]]].flat(); // [1, 2, [3, [4]]]
+[1, [2, [3, [4]]]].flat(1); // [1, 2, [3, [4]]]
+
+// 2단계 깊이까지 평탄화한다.
+[1, [2, [3, [4]]]].flat(2); // [1, 2, 3, [4]]
+[1, [2, [3, [4]]]].flat().flat(); // [1, 2, 3, [4]]
+
+[1, [2, [3, [4]]]].flat(Infinity); // [1, 2, 3, 4]
+```
+
+## 배열 고차 함수
