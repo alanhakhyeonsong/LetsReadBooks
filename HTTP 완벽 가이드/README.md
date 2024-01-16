@@ -13,7 +13,7 @@
 - 7장. 캐시
 - [8장. 통합점: 게이트웨이, 터널, 릴레이](./contents/chapter08.md)
 - 9장. 웹 로봇
-- 10장. HTTP/2.0
+- [10장. HTTP/2.0](./contents/chapter10.md)
 
 ### 3. 식별, 인가, 보안
 - [11장. 클라이언트 식별과 쿠키](./contents/chapter11.md)
