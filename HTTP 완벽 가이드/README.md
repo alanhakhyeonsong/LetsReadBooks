@@ -19,7 +19,7 @@
 - [11장. 클라이언트 식별과 쿠키](./contents/chapter11.md)
 - [12장. 기본 인증](./contents/chapter12.md)
 - 13장. 다이제스트 인증
-- 14장. 보안 HTTP
+- [14장. 보안 HTTP](./contents/chapter14.md)
 
 ### 4. 엔터티, 인코딩, 국제화
 - 15장. 엔터티와 인코딩
