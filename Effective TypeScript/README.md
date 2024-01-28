@@ -4,7 +4,7 @@
 - [아이템 1. 타입스크립트와 자바스크립트의 관계 이해하기](./contents/chapter01/item01.md)
 - [아이템 2. 타입스크립트 설정 이해하기](./contents/chapter01/item02.md)
 - [아이템 3. 코드 생성과 타입이 관계없음을 이해하기](./contents/chapter01/item03.md)
-- 아이템 4. 구조적 타이핑에 익숙해지기
+- [아이템 4. 구조적 타이핑에 익숙해지기](./contents/chapter01/item04.md)
 - [아이템 5. any 타입 지양하기](./contents/chapter01/item05.md)
 
 ### 2장. 타입스크립트의 타입 시스템
