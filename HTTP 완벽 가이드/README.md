@@ -18,7 +18,7 @@
 ### 3. 식별, 인가, 보안
 - [11장. 클라이언트 식별과 쿠키](./contents/chapter11.md)
 - [12장. 기본 인증](./contents/chapter12.md)
-- 13장. 다이제스트 인증
+- [13장. 다이제스트 인증](./contents/chapter13.md)
 - [14장. 보안 HTTP](./contents/chapter14.md)
 
 ### 4. 엔터티, 인코딩, 국제화
