@@ -15,7 +15,7 @@
 - [아이템 10. 객체 래퍼 타입 피하기](./contents/chapter02/item10.md)
 - 아이템 11. 잉여 속성 체크의 한계 인지하기
 - [아이템 12. 함수 표현식에 타입 적용하기](./contents/chapter02/item12.md)
-- 아이템 13. 타입과 인터페이스의 차이점 알기
+- [아이템 13. 타입과 인터페이스의 차이점 알기](./contents/chapter02/item13.md)
 - [아이템 14. 타입 연산과 제너릭 사용으로 반복 줄이기](./contents/chapter02/item14.md)
 - 아이템 15. 동적 데이터에 인덱스 시그니처 사용하기
 - 아이템 16. number 인덱스 시그니처보다는 Array, 튜플, ArrayLike를 사용하기
