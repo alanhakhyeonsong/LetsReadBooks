@@ -13,7 +13,7 @@
 - 아이템 8. 타입 공간과 값 공간의 심벌 구분하기
 - [아이템 9. 타입 단언보다는 타입 선언을 사용하기](./contents/chapter02/item09.md)
 - [아이템 10. 객체 래퍼 타입 피하기](./contents/chapter02/item10.md)
-- 아이템 11. 잉여 속성 체크의 한계 인지하기
+- [아이템 11. 잉여 속성 체크의 한계 인지하기](./contents/chapter02/item11.md)
 - [아이템 12. 함수 표현식에 타입 적용하기](./contents/chapter02/item12.md)
 - [아이템 13. 타입과 인터페이스의 차이점 알기](./contents/chapter02/item13.md)
 - [아이템 14. 타입 연산과 제너릭 사용으로 반복 줄이기](./contents/chapter02/item14.md)
