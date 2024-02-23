@@ -319,3 +319,197 @@ Long savedArticleId = article.getId(); // DB 저장 후 식별자 참조 가능
 ```
 
 ### 밸류 타입
+밸류 타입은 개념적으로 완전한 하나를 표현할 때 사용한다.
+
+```java
+public class Receiver {
+  private String name;
+  private String phoneNumber;
+
+  public Receiver(String name, String phoneNumber) {
+    this.name = name;
+    this.phoneNumber = phoneNumber;
+  }
+  
+  // ... getter
+}
+```
+
+`ShippingInfo`의 받는 사람 정보를 도메인 개념으로 추출하여 나타낸다. 주소 관련 데이터도 `Address` 밸류 타입을 사용해서 명확하게 표현 가능하다.
+
+```java
+public class ShippingInfo {
+  private Receiver receiver;
+  private Address address;
+
+  // ... constructor, getter
+}
+```
+
+밸류 타입이 꼭 두 개 이상의 데이터를 가져야 하는 것은 아니다. `OrderLine`의 `price`와 `amount`는 돈을 의미하는데, `Money` 타입을 만들어 사용하면 코드를 이해하는 데 도움이 된다.
+
+```java
+public class Money {
+  private int amount;
+
+  // ... constructor, getter
+}
+
+public class OrderLine {
+  private Product product;
+  private Money price;
+  private int quantity;
+  private Money amounts;
+}
+```
+
+밸류 타입의 또 다른 장점은 밸류 타입을 위한 기능을 추가할 수 있다는 것이다. `Money` 타입은 돈 계산을 위한 기능을 추가할 수 있다.
+
+```java
+public class Money {
+  private int amount;
+
+  // ... constructor, getter
+
+  public Money add(Money money) {
+    return new Money(this.value + money.value);
+  }
+
+  public Money multiply(int multiplier) {
+    return new Money(this.value * multiplier);
+  }
+}
+```
+
+`Money`를 사용하는 코드는 이제 '정수 타입 연산'이 아닌 '돈 계산'이라는 의미로 코드를 작성할 수 있다.
+
+**밸류 객체의 데이터를 변경할 때는 기존 데이터를 변경하기보단 변경한 데이터를 갖는 새로운 밸류 객체를 생성하는 방식을 선호한다.** 이처럼 데이터 변경 기능을 제공하지 않는 타입을 **불변**이라 표현한다. 밸류 타입을 불변으로 구현하는 가장 중요한 이유는 **안전한 코드를 작성할 수 있다는 데 있다.**
+
+```java
+Money price = ...;
+OrderLine line = new OrderLine(product, price, quantity);
+// 만약 price.setValue(0)로 값을 변경할 수 있다면?
+// → price의 값이 잘못 반영되는 상황이 발생한다.
+```
+
+위와 같은 문제가 발생하는 것을 방지하려면 `OrderLine` 생성자는 새로운 `Money` 객체를 생성하도록 코드를 작성해야 한다.
+
+```java
+public class OrderLine {
+  // ...
+  private Money price;
+
+  public OrderLine(Product product, Money price, int quantity) {
+    this.product = product;
+    // Money가 불변 객체가 아니라면, price 파라미터가 변경도리 때 발생하는 문제를 방지하기 위해
+    // 데이터를 복사한 새로운 객체를 생성해야 한다.
+    this.price = new Money(price.getValue());
+    this.quantity = quantity;
+    this.amount = calculateAmounts();
+  }
+
+  // ...
+}
+```
+
+또한 두 밸류 객체를 비교할 때는 모든 속성이 같은지 비교한다.
+
+```java
+public class Receiver {
+  private String name;
+  private String phoneNumber;
+
+  public Receiver(String name, String phoneNumber) {
+    this.name = name;
+    this.phoneNumber = phoneNumber;
+  }
+  
+  // ... getter
+
+  public boolean equals(Object other) {
+    if (other == null) return false;
+    if (this == other) return true;
+    if (! (other instanceof Receiver) ) return false;
+    Receiver that = (Receiver) other;
+    return this.name.equals(that.name) && this.phoneNumber.equals(this.phoneNumber);
+  }
+
+  // ...
+}
+```
+
+### 엔티티 식별자와 밸류 타입
+엔티티 식별자의 실제 데이터는 `String` 같은 문자열로 구성된 경우가 많다.
+
+- 신용카드 번호
+- 이메일 주소
+
+이런 식별자는 도메인에서 특별한 의미를 지니는 경우가 많아 식별자를 위한 밸류 타입을 사용해 의미가 잘 드러나도록 할 수 있다.
+
+```java
+public class Order {
+  // OrderNo 타입 자체로 id가 주문번호임을 알 수 있다.
+  private OrderNo id;
+  
+  // ...
+}
+```
+
+### 도메인 모델에 setter 넣지 않기
+getter/setter를 습관적으로 추가할 때가 있다. 이는 좋지 않다.
+
+- **setter는 도메인의 핵심 개념이나 의도를 코드에서 사라지게 한다.**
+  - `setOrderState()` 보단 `completePayment()`가 좀 더 자연스럽다.
+- 도메인 객체를 생성할 때 온전하지 않은 상태가 될 수 있다.
+
+```java
+// setter 메서드로 데이터를 전달하도록 구현하면
+// 처음 Order를 생성하는 시점에 order는 완전하지 않다.
+Order order = new Order();
+
+// setter로 필요한 모든 값을 전달해야 함.
+order.setOrderLine(lines);
+order.setShippingInfo(shippingInfo);
+
+// 주문자(Orderer)를 설정하지 않은 상태에서 주문 완료 처리
+order.setState(OrderState.PREPARING);
+```
+
+이를 방지하기 위해 생성자를 통해 필요한 데이터를 모두 받아야 한다.
+
+```java
+Order order = new Order(orderer, lines, shippingInfo, OrderState.PREPARING);
+```
+
+생성자로 필요한 것을 모두 받으므로 생성자를 호출하는 시점에 필요한 데이터가 올바른지 검사할 수 있다.
+
+```java
+public class Order {
+  public Order(Orderer orderer, List<OrderLine> orderLines, ShippingInfo shippingInfo, OrderState state) {
+    setOrderer(orderer);
+    setOrderLines(orderLines);
+    // 다른 값 설정
+  }
+
+  private void setOrderer(Orderer orderer) {
+    if (orderer == null) throw new IllegalArgumentException("no orderer");
+    this.orderer = orderer;
+  }
+
+  private void setOrderLines(List<OrderLine> orderLines) {
+    verifyAtLeastOneOrMoreOrderLines(orderLines);
+    this.orderLines = orderLines;
+    calculateTotalAmounts();
+  }
+
+  private void verifyAtLeastOneOrMoreOrderLines(List<OrderLine> orderLines) {
+    if (orderLines == null || orderLines.isEmpty()) {
+      throw new IllegalArgumentException("no OrderLine");
+    }
+  }
+
+  // ...
+}
+```
+
+불변 밸류 타입을 사용하면 자연스럽게 밸류 타입에는 setter를 구현하지 않는다.
