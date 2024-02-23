@@ -95,3 +95,101 @@ public class CalculateDiscountService {
 이런 상황에서 Drools가 아닌 다른 구현 기술을 사용하려면 코드의 많은 부분을 고쳐야 한다. **인프라스트럭처에 의존하면 '테스트 어려움'과 '기능 확장의 어려움'이라는 두 가지 문제가 발생한다.** 이 두 문제를 해소하는 방법은 DIP에 있다.
 
 ## DIP
+가격 할인 계산을 하려면 고객 정보를 구해야 하고, 구한 고객 정보와 주문 정보를 이용해 룰을 실행해야 한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/7863e96e-8781-44ad-880b-e113f29910e3)
+
+- `CalculateDiscountService`는 고수준의 모듈
+- 고수준 모듈: 의미 있는 단일 기능을 제공하는 모듈
+- 고수준 모듈의 기능을 구현하려면 여러 하위 기능이 필요하다.
+- 고수준 모듈이 제대로 동작하려면 저수준 모듈을 사용해야 한다.
+  - 고수준 모듈이 저수준 모듈을 사용하면 구현 변경과 테스트가 어렵다는 문제가 발생한다.
+  - 문제를 해결하기 위해 DIP를 통해 저수준 모듈이 고수준 모듈에 의존하도록 바꾼다.
+
+이는 추상화한 인터페이스를 통해 해결할 수 있다.
+
+```java
+public interface RuleDiscounter {
+  Money applyRules(Customer customer, List<OrderLine> orderLines);
+}
+
+public class CalculateDiscountService {
+  private RuleDiscounter ruleDiscounter;
+
+  public CalculateDiscountService(RuleDiscounter ruleDiscounter) {
+    this.ruleDiscounter = ruleDiscounter;
+  }
+
+  public Money calculateDiscount(List<OrderLine> orderLines, String customerId) {
+    Customer customer = findCustomer(customerId);
+    return ruleDiscounter.applyRules(customer, orderLines);
+  }
+
+  // ...
+}
+```
+
+`CalculateDiscountService`에는 Drools에 의존하는 코드가 없다. 단지 `RuleDiscounter`가 룰을 적용한다는 사실만 알 뿐이다. `RuleDiscounter`의 구현 객체는 생성자를 통해 전달받는다.
+
+```java
+public class DroolsRuleDiscounter implements RuleDiscounter {
+  // ...
+}
+```
+
+이렇게 바뀌면 `CalculateDiscountService`는 더 이상 구현 기술에 의존하지 않는다. '룰을 이용한 할인 금액 계산'은 고수준 모듈의 개념이므로 `RuleDiscounter` 인터페이스는 고수준 모듈에 속한다. `DroolsRuleDiscounter`는 고수준의 하위 기능인 `RuleDiscounter`를 구현한 것이므로 저수준 모듈에 속한다.
+
+DIP를 적용하면 저수준 모듈이 고수준 모듈에 의존하게 된다. 이를 DIP, 의존 역전 원칙이라 부른다.
+
+DIP를 적용하면 앞서 언급한 두 가지 문제를 해결할 수 있다.
+
+```java
+// 사용할 저수준 객체 생성
+RuleDiscounter ruleDiscounter = new DroolsRuleDiscounter();
+
+// 사용할 저수준 구현 객체 변경 시
+// RuleDiscounter ruleDiscounter = new SimpleRuleDiscounter();
+
+// 생성자 방식으로 주입
+CalculateDiscountService disService = new CalculateDiscountService(ruleDiscounter);
+```
+
+테스트 역시 인터페이스를 의존하는 구조라면 대역 객체를 사용해서 테스트를 진행할 수 있다.
+
+```java
+public class CalculateDiscountServiceTest {
+
+  @Test
+  public void noCustomer_thenExceptionShouldBeThrown() {
+    // 테스트 목적의 대역 객체
+    CustomerRepository stubRepo = mock(CustomerRepository.class);
+    when(stubRepo.findById("noCustId")).thenReturn(null);
+
+    RuleDiscounter stubRule = (cust, lines) -> null;
+
+    // 대용 객체를 주입받아 테스트 진행
+    CalculateDiscountService calDisSvc = new CalculateDiscountService(stubRepo, stubRule);
+    assertThrows(NoCustomerException.class, () -> calDisSvc.calculateDiscount(someLines, "noCustId"));
+  }
+}
+```
+
+### DIP 주의사항
+DIP를 잘못 생각하면 단순히 인터페이스와 구현 클래스를 분리하는 정도로 받아들일 수 있다. DIP의 핵심은 고수준 모듈이 저수준 모듈에 의존하지 않도록 하기 위함인데 이를 적용한 결과 구조만 보고 저수준 모듈에서 인터페이스를 추출하는 경우가 있다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c1648fe4-3a2d-42c3-801b-ddf296167b0d)
+
+이는 잘못된 구조다. 도메인 영역은 구현 기술을 다루는 인프라스트럭처 영역에 의존하고 있다. 즉, 여전히 고수준 모듈이 저수준 모듈에 의존하고 있는 것이다. DIP를 적용할 때 하위 기능을 추상화한 인터페이스는 고수준 모듈 관점에서 도출한다. 즉, '할인 금액 계산'을 추상화한 인터페이스는 저수준 모듈이 아닌 고수준 모듈에 위치한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/e551d09f-7f97-4f5d-9b30-4bf7437e9d76)
+
+### DIP와 아키텍처
+인프라스트럭처 영역은 구현 기술을 다루는 저수준 모듈이고 응용 영역과 도메인 영역은 고수준 모듈이기 때문에 DIP를 적용하면 아래와 같이 인프라스트럭처 영역이 응용 영역과 도메인 영역에 의존(상속)하는 구조과 된다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/d7399150-4da2-4367-a275-b33a218ca124)
+
+인프라스트럭처에 위치한 클래스가 도메인이나 응용 영역에 정의된 인터페이스를 상속받아 구현하는 구조가 되므로 도메인과 응용 영역에 대한 영향을 주지 않거나 최소화 하면서 구현 기술을 변경하는 것이 가능하다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/d57a8622-9de4-496a-94e8-0b9159b2491b)
+
+## 도메인 영역의 주요 구성요소
