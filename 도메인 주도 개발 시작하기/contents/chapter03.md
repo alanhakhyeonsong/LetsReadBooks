@@ -318,3 +318,72 @@ public class JpaProductRepository implements ProductRepository {
 ```
 
 `:catId member of p.categoryIds`는 `categoryIds` 컬렉션에 `catId`로 지정한 값이 존재하는지 검사하기 위한 검색 조건이다. 응용 서비스는 이 기능을 사용해서 지정한 카테고리에 속한 `Product` 목록을 구할 수 있다.
+
+## 애그리거트를 팩토리로 사용하기
+고객이 특정 상점을 여러 차례 신고해서 해당 상점이 더 이상 물건을 등록하지 못하도록 차단한 상태라고 해보자.
+
+```java
+public class RegisterProductService {
+
+  public ProductId registerNewProduct(NewProductRequest req) {
+    Store store = storeRepository.findById(req.getStoreId());
+    checkNull(store);
+    if (store.isBlocked()) {
+      throw new StoreBlockException();
+    }
+    ProductId id = productRepository.nextId();
+    Product product = new Product(id, store.getId(), ...(생략)..);
+    productRepository.save(product);
+    return id;
+  }
+
+  // ...
+}
+```
+
+- `Product`를 생성 가능한지 판단하는 코드와 `Product`를 생성하는 코드가 분리되어 있다.
+  - 도메인 로직 처리가 응용 서비스에 노출되었다. → 판단하고 생성하는 것은 논리적으로 하나의 도메인 기능인데 위치가 이상하다.
+
+별도의 도메인 서비스나 팩토리 클래스를 만들 수도 있지만 이 기능을 `Store` 애그리거트에 구현할 수도 있다.
+
+```java
+public class Store {
+
+  public Product createProduct(ProductId newProductId, ...(생략)) {
+    if (isBlocked()) throw new StoreBlockedException();
+    return new Product(newProductId, getId(), ...(생략));
+  }
+}
+
+public class RegisterProductService {
+
+  public ProductId registerNewProduct(NewProductRequest req) {
+    Store store = storeRepository.findById(req.getStoreId());
+    checkNull(store);
+    ProductId id = productRepository.nextId();
+    Product product = store.createProduct(id, ...(생략)..);
+    productRepository.save(product);
+    return id;
+  }
+  // ...
+}
+```
+
+- 더이상 응용 서비스에서 `Store`의 상태를 확인하지 않는다.
+- `Product` 생성 가능 여부를 확인하는 도메인 로직을 변경해도 도메인 영역의 `Store`만 변경하면 되고 응용 서비스는 영향을 받지 않는다.
+- 도메인의 응집도도 높아졌다.
+
+이것이 애그리거트를 팩토리로 사용할 때 얻을 수 있는 장점이다.
+
+애그리거트가 갖고 있는 데이터를 이용해서 다른 애그리거트를 생성해야 한다면 애그리거트에 팩토리 메서드를 구현하는 것을 고려해도 좋다.  
+
+```java
+public class Store {
+
+  public Product createProduct(ProductId newProductId, ProductInfo pi) {
+    if (isBlocked()) throw new StoreBlockedException();
+    // 다른 팩토리에 위임하더라도 차단 상태의 상점은 상품을 만들 수 없다는 도메인 로직은 한곳에 계속 위치한다.
+    return ProductFactory.create(newProductId, getId(), pi);
+  }
+}
+```
