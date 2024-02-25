@@ -226,3 +226,95 @@ public class JpaOrderViewDao implements OrderViewDao {
 
 ## 애그리거트 간 집합 연관
 애그리거트 간 1-N과 M-N 연관에 대해 살펴보자. 이 두 연관은 컬렉션을 이용한 연관이다. 카테고리와 상품 간의 연관이 대표적이다.
+
+```java
+public class Category {
+
+  private Set<Product> products; // 다른 애그리거트에 대한 1-N 연관
+
+  // ...
+}
+```
+
+개념적으로 존재하는 애그리거트 간의 1-N 연관을 실제 구현에 반영하는 것이 요구사항을 충족하는 것과는 상관없을 때가 있다. 특정 카테고리에 속한 상품 목록을 보여주는 요구사항을 생각해보자. 보통 목록 관련 요구사항은 한 번에 전체 상품을 보여주기보단 페이징을 이용해 제품을 나눠서 보여준다. 이 기능을 카테고리 입장에서 1-N 연관을 이용해 구현하면 다음과 같은 방식으로 코드를 작성해야 한다.
+
+```java
+public class Category {
+  private Set<Product> products;
+
+  public List<Product> getProducts(int page, int size) {
+    List<Product> sortedProducts = sortById(products);
+    return sortedProducts.subList((page - 1) * size, page * size);
+  }
+
+  // ...
+}
+```
+
+이 코드를 실제 DBMS와 연동해서 구현하면 심각한 성능 문제를 일으킬 것이다. 개념적으론 애그리거트 간에 1-N 연관이 있더라도 실제 구현에 반영하지 않는다.
+
+카테고리에 속한 상품을 구할 필요가 있다면 상품 입장에서 자신이 속한 카테고리를 N-1로 연관 지어 구하면 된다. 이를 구현 모델에 반영하면 `Product`에 `Category`로의 연관을 추가하고 그 연관을 이용해 특정 `Category`에 속한 `Product` 목록을 구하면 된다.
+
+```java
+public class Product {
+
+  // ...
+  private CategoryId categoryId;
+  // ...
+}
+
+public class ProductListService {
+
+  public Page<Product> getProductOfCategory(Long categoryId, int page, int size) {
+    Category category = categoryRepository.findById(categoryId);
+    checkCategory(category);
+    List<Product> products = productRepository.findByCategoryId(category.getId(), page, size);
+    int totalCount = productRepository.countsByCategoryId(category.getId());
+    return new Page(page, size, totalCount, products);
+  }
+
+  // ...
+}
+```
+
+M-N 연관은 개념적으로 양쪽 애그리거트에 컬렉션으로 연관을 만든다. M-N 연관도 실제 요구사항을 고려하여 구현에 포함시킬지를 결정해야 한다.
+
+보통 특정 카테고리에 속한 상품 목록을 보여줄 때 목록 화면에서 각 상품이 속한 코든 카테고리를 상품 정보에 표시하지는 않는다. 제품이 속한 모든 카테고리가 필요한 화면은 상품 상세 화면이다. 이러한 요구사항을 고려할 때 카테고리에서 상품으로의 집합 연관은 필요하지 않다. 상품에서 카테고리로의 집합 연관만 존재하면 된다. 즉 개념적으로는 양방향 M-N 연관이 존재하지만 실제 구현에선 상품에서 카테고리로의 단방향 M-N 연관만 적용하면 된다.
+
+```java
+@Entity
+@Table(name = "product")
+public class Product {
+  @EmbeddedId
+  private ProductId id;
+
+  @ElementCollection
+  @CollectionTable(name = "product_category", joinColumns = @JoinColumn(name = "product_id"))
+  private Set<CategoryId> categoryIds;
+
+  // ...
+}
+
+@Repository
+public class JpaProductRepository implements ProductRepository {
+  @PersistenceContext
+  private EntityManager entityManager;
+
+  @Override
+  public List<Product> findByCategoryId(CategoryId catId, int page, int size) {
+    TypedQuery<Product> query = entityManager.createQuery(
+      "select p from Product p " +
+      "where :catId member of p.categoryIds order by p.id.id desc",
+      Product.class);
+    
+    query.setParameter("catId", catId);
+    query.setFirstResult((page - 1) * size);
+    query.setMaxResult(size);
+    return query.getResultList();
+  }
+
+  // ...
+}
+```
+
+`:catId member of p.categoryIds`는 `categoryIds` 컬렉션에 `catId`로 지정한 값이 존재하는지 검사하기 위한 검색 조건이다. 응용 서비스는 이 기능을 사용해서 지정한 카테고리에 속한 `Product` 목록을 구할 수 있다.
