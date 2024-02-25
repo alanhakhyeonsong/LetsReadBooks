@@ -102,3 +102,127 @@ public class ChangeOrderService {
 저장소로 MariaDB나 Oracle과 같은 RDBMS 뿐만 아니라 MongoDB와 같은 NoSQL도 함께 사용하는 곳이 증가하고 있다. 애그리거트를 영속화할 저장소로 무엇을 사용하든지 간에 애그리거트의 상태가 변경되면 모든 변경을 원자적으로 저장소에 반영해야 한다. 애그리거트에서 두 개의 객체를 변경했는데 저장소에는 한 객체에 대한 변경만 반영되면 데이터 일관성이 깨지므로 문제가 된다.
 
 ## ID를 이용한 애그리거트 참조
+한 객체가 다른 객체를 참조하는 것처럼 애그리거트도 다른 애그리거트를 참조한다. 애그리거트 관리 주체는 애그리거트 루트이므로 애그리거트에서 다른 애그리거트를 참조한다는 것은 다른 애그리거트의 루트를 참조한다는 것과 같다.
+
+애그리거트 간의 참조는 필드를 통해 쉽게 구현할 수 있다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/9ceacabb-6bf2-4bb5-ac9b-33d3d2f80ad7)
+
+JPA는 `@ManyToOne`, `@OneToOne`과 같은 애너테이션을 이용해서 연관된 객체를 로딩하는 기능을 제공하고 있으므로 필드를 이용해 다른 애그리거트를 쉽게 참조할 수 있다.
+
+ORM 기술 덕에 애그리거트 루트에 대한 참조를 쉽게 구현할 수 있고 필드(또는 getter)를 이용한 애그리거트 참조를 사용하면 다른 애그리거트의 데이터를 쉽게 조회할 수 있다. 하지만 필드를 이용한 애그리거트 참조는 다음 문제를 야기할 수 있다.
+
+- 편한 탐색 오용
+- 성능에 대한 고민
+- 확장 어려움
+
+한 애그리거트 내부에서 다른 애그리거트 객체에 접근할 수 있으면 다른 애그리거트의 상태를 쉽게 변경할 수 있게 된다. 트랜잭션 범위에서 언급한 것처럼 한 애그리거트가 관리하는 범위는 자기 자신으로 한정해야 한다. 그런데 애그리거트 내부에서 다른 애그리거트 객체에 접근할 수 있으면 구현의 편리함 때문에 다른 애그리거트를 수정하고자 하는 유혹에 빠지기 쉽다.
+
+```java
+public class Order {
+  private Orderer orderer;
+
+  public void changeShippingInfo(ShippingInfo newShippingInfo,
+          boolean useNewShippingAddrAsMemberAddr) {
+    // ...
+    if (useNewShippingAddrAsMemberAddr) {
+      // 한 애그리거트 내부에서 다른 애그리거트에 접근할 수 있으면,
+      // 구현이 쉬워진다는 것 때문에 다른 애그리거트의 상태를 변경하는
+      // 유혹에 빠지기 쉽다.
+      orderer.getMember().changeAddress(newShippingInfo.getAddress());
+    }
+  }
+  // ...
+}
+```
+
+애그리거트를 직접 참조하면 성능과 관련된 여러가지 고민을 해야 한다. JPA를 사용하면 참조한 객체를 지연 로딩과 즉시 로딩의 두 가지 방식에 대한 고민이 필요하다. 또한 서비스가 커지면 도메인을 분리하기 위해 시스템을 분리하기 시작하면서 더 이상 다른 애그리거트 루트를 참조하기 위해 JPA와 같은 단일 기술을 사용할 수 없다.
+
+이런 세 가지 문제점을 완화시키기 위해 ID를 이용해 다른 애그리거트를 참조한다. DB 테이블에서 외래키로 참조하는 것과 비슷하게 ID를 이용한 참조는 다른 애그리거트를 참조할 때 ID를 사용한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/f97fdbda-7f8e-48e2-b0cf-d5951a008216)
+
+ID 참조를 사용하면 모든 객체가 참조로 연결되지 않고 한 애그리거트에 속한 객체들만 참조로 연결된다. 이는 애그리거트의 경계를 명확히 하고 애그리거트 간 물리적인 연결을 제거하기 때문에 모델의 복잡도를 낮춰준다. 또한 애그리거트 간의 의존을 제거하므로 응집도를 높여주는 효과도 있다.
+
+구현 복잡도도 낮아진다. 다른 애그리거트를 직접 참조하지 않으므로 애그리거트 간 참조를 지연 로딩으로 할지 즉시 로딩으로 할지 고민하지 않아도 된다. 참조하는 애그리거트가 필요하면 응용 서비스에서 ID를 이용해서 로딩하면 된다.
+
+```java
+public class ChangeOrderService {
+
+  @Transactional
+  public void changeShippingInfo(OrderId id, ShippingInfo newShippingInfo, boolean useNewShippingAddrAsMemberAddr) {
+    Order order = orderRepository.findById(id);
+    if (order == null) throw new OrderNotFoundException();
+    order.changeShippingInfo(newShippingInfo);
+    if (useNewShippingAsMemberAddr) {
+      // ID를 이용해서 참조하는 애그리거트를 구한다.
+      Member member = memberRepository.findById(
+        order.getOrderer().getMemberId();
+      );
+      member.changeAddress(newShippingInfo.getAddress());
+    }
+  }
+
+  // ...
+}
+```
+
+응용 서비스에서 필요한 애그리거트를 로딩하므로 애그리거트 수준에서 지연 로딩을 하는 것과 동일한 결과를 만든다.
+
+ID를 이용한 참조 방식을 사용하면 복잡도를 낮추는 것과 함께 한 애그리거트에서 다른 에그리거트를 수정하는 문제를 근원적으로 방지할 수 있다. 외부 애그리거트를 직접 참조하지 않기 때문에 애초에 한 애그리거트에서 다른 애그리거트의 상태를 변경할 수 없는 것이다.
+
+애그리거트별로 다른 구현 기술을 사용하는 것도 가능해진다. 중요한 데이터인 주문 애그리거트는 RDBMS에 저장하고 조회 성능이 중요한 상품 애그리거트는 NoSQL에 저장할 수 있다. 또한 각 도메인을 별도 프로세스로 서비스하도록 구현할 수도 있다.
+
+### ID를 이용한 참조와 조회 성능
+다른 애그리거트를 ID로 참조하면 참조하는 여러 애그리거트를 읽을 때 조회 속도가 문제될 수 있다.
+
+주문 목록을 보여주기위해 상품 애그리거트와 회원 애그리거트를 함께 읽어야 하는데, 이를 처리할 때 각 주문마다 상품과 회원 애그리거트를 읽어온다면, 한 DBMS에 데이터가 있다면 조인을 이용해서 한 번에 모든 데이터를 가져올 수 있음에도 불구하고 주문마다 상품 정보를 읽어오는 쿼리를 실행하게 된다.
+
+```java
+Member member = memberRepository.findById(ordererId);
+List<Order> orders = orderRepository.findByOrderer(ordererId);
+List<OrderView> dtos = orders.stream()
+            .map(order -> {
+              ProductId prodId = order.getOrderLines().get(0).getProductId();
+              // 각 주문마다 첫 번째 주문 상품 정보 로딩을 위한 쿼리 실행
+              Product product = productRepository.findById(prodId);
+              return new OrderView(order, member, product);
+            }).collect(toList());
+```
+
+주문 개수가 10개면 주문을 읽어오기 위한 1번의 쿼리와 주문별로 각 상품을 읽어오기 위한 10번의 쿼리를 실행한다. '조회 대상이 N개일 때 N개를 읽어오는 한 번의 쿼리와 연관된 데이터를 읽어오는 쿼리를 N번 실행한다'해서 이를 **N+1 조회 문제**라 부른다. ID를 이용한 애그리거트 참조는 지연 로딩과 같은 효과를 만드는 데 지연 로딩과 관련된 대표적인 문제가 N+1 조회 문제다.
+
+이는 더 많은 쿼리를 실행하기에 전체 조회 속도가 느려지는 원인이 된다. **이 문제가 발생하지 않도록 하려면 조인을 사용해야 한다.** ID 참조 방식을 객체 참조 방식으로 바꾸고 즉시 로딩을 사용하도록 매핑 설정을 바꾸는게 가장 쉬운 방법인데, 이는 애그리거트 간 참조를 ID 참조 방식에서 객체 참조 방식으로 다시 되돌리는 것이다.
+
+조회 전용 쿼리를 만들면 이 문제를 해결할 수 있다. 데이터 조회를 위한 별도 DAO를 만들고 DAO의 조회 메서드에서 조인을 이용해 한 번의 쿼리로 필요한 데이터를 로딩하면 된다.
+
+```java
+@Repository
+public class JpaOrderViewDao implements OrderViewDao {
+  @PersistenceContext
+  private EntityManager em;
+
+  @Override
+  public List<OrderView> selectByOrderer(String ordererId) {
+    String selectQuery = 
+            "select new com.myshop.order.application.dto.OrderView(o, m, p) " +
+            "from Order o join o.orderLines ol, Member m, Product p " +
+            "where o.orderer.memberId.id = :ordererId " +
+            "and o.orderer.memberId = m.id " +
+            "and index(ol) = 0 " +
+            "and ol.productId = p.id " +
+            "order by o.number.number desc";
+    TypedQuery<OrderView> query = 
+        em.createQuery(selectQuery, OrderView.class);
+    query.setParameter("ordererId", ordererId);
+    return query.getResultList();
+  }
+}
+```
+
+쿼리가 복잡하거나 SQL에 특화된 기능을 사용해야 한다면 조회를 위한 부분만 마이바티스와 같은 기술을 이용해서 구현할 수도 있다.
+
+애그리거트마다 서로 다른 저장소를 사용하면 한 번의 쿼리로 관련 애그리거트를 조회할 수 없다. 이때는 조회 성능을 높이기 위해 캐시를 적용하거나 조회 전용 저장소를 따로 구성한다. 이 방법은 코드가 복잡해지는 단점이 있지만 시스템의 처리량을 높일 수 있다는 장점이 있다. 특히 한 대의 DB 장비로 대응할 수 없는 수준의 트래픽이 발생하는 경우 캐시나 조회 전용 저장소는 필수로 선택해야 하는 기법이다.
+
+## 애그리거트 간 집합 연관
+애그리거트 간 1-N과 M-N 연관에 대해 살펴보자. 이 두 연관은 컬렉션을 이용한 연관이다. 카테고리와 상품 간의 연관이 대표적이다.
