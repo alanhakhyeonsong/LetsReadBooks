@@ -205,3 +205,159 @@ fun main(args: Array<String>) {
 컬렉션을 다루는 코드를 작성할 경우에는 원하는 바를 어떻게 일반적인 변환을 사용해 표현할 수 있는지 생각해보고 그런 변환을 제공하는 라이브러리 함수가 있는지 살펴보라.
 
 ## 지연 계산(lazy) 컬렉션 연산
+`map`이나 `filter` 같은 몇 가지 컬렉션 함수를 살펴봤다. 그런 함수는 결과 컬렉션을 **즉시** 생성한다. 이는 컬렉션 함수를 연쇄하면 매 단계마다 계산 중간 결과를 새로운 컬렉션에 임시로 담는다는 뜻이다. **시퀀스(sequence)를 사용하면 중간 임시 컬렉션을 사용하지 않고도 컬렉션 연산을 연쇄할 수 있다.**
+
+```kotlin
+fun main(args: Array<String>) {
+  listOf(1, 2, 3, 4).asSequence() // 원본 컬렉션을 시퀀스로 변환한다. 
+          .map { print("map($it) "); it * it } // 시퀀스도 컬렉션과 똑같은 API를 제공한다. 
+          .filter { print("filter($it) "); it % 2 == 0 }
+          .toList() // 결과 시퀀스를 다시 리스트로 변환한다. 
+}
+```
+
+코틀린 지연 계산 시퀀스는 `Sequence` 인터페이스에서 시작한다. `Sequence` 안에는 `iterator`라는 단 하나의 메소드가 있다. 그 메소드를 통해 시퀀스로부터 원소 값을 얻을 수 있다.
+
+---
+📌 왜 시퀀스를 다시 컬렉션으로 되돌려야 할까?
+
+컬렉션보다 시퀀스가 훨씬 더 낫다면 그냥 시퀀스를 쓰는 편이 나을수도 있다. 하지만 "항상 그렇지는 않다". 시퀀스의 원소를 차례로 이터레이션해야 한다면 시퀀스를 직접 써도 된다. 하지만 시퀀스 원소를 인덱스를 사용해 접근하는 등의 다른 API 메소드가 필요하다면 시퀀스를 리스트로 변환해야 한다.
+
+---
+
+### 시퀀스 연산 실행: 중간 연산과 최종 연산
+시퀀스에 대한 연산은 **중간 연산**과 **최종 연산**으로 나뉜다. 중간 연산은 다른 시퀀스를 반환한다. 그 시퀀스는 최초 시퀀스의 원소를 변환하는 방법을 안다. 최종 연산은 결과를 반환한다. 결과는 최초 컬렉션에 대해 변환을 적용한 시퀀스로부터 일련의 계산을 수행해 얻을 수 있는 컬렉션이나 원소, 숫자 또는 객체다.
+
+![](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/8ffea406-682b-4471-a11e-9efb8fb5e850)
+
+```kotlin
+fun main(args: Array<String>) {
+  listOf(1, 2, 3, 4).asSequence()
+          .map { print("map($it) "); it * it }
+          .filter { print("filter($it) "); it % 2 == 0 }
+          .toList()
+}
+
+// 결과
+map(1) filter(1) map(2) filter(4) map(3) filter(9) map(4) filter(16)
+```
+
+시퀀스의 경우 모든 연산은 각 원소에 대해 순차적으로 적용된다. 즉 첫 번째 원소가 처리되고, 다시 두 번째 원소가 처리되며, 이런 처리가 모든 원소에 대해 적용된다.
+
+시퀀스를 사용하면 지연 계산으로 인해 원소 중 일부의 계산은 이뤄지지 않는다.
+
+![](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c6002559-049b-4f5f-b429-e9df4f76a859)
+
+
+자바 8을 채택하면 현재 코틀린 컬렉션과 시퀀스에서 제공하지 않는 중요한 기능을 사용할 수 있다. 바로 스트림 연산(`map`과 `filter` 등)을 여러 CPU에서 병렬적으로 실행하는 기능이 그것이다.
+
+## 자바 함수형 인터페이스 활용
+### 자바 메서드에 람다를 인자로 전달
+함수형 인터페이스를 인자로 원하는 자바 메서드에 코틀린 람다를 전달할 수 있다.
+
+```kotlin
+// Java
+void postponeComputation(int delay, Runnable computation);
+
+// Kotlin
+postponeComputation(1000, object: Runnable {
+  override fun run() {
+    println(42)
+  }
+})
+
+postponeComputation(1000) { println(42) }
+```
+
+람다와 무명 객체 사이에는 차이가 있다. 객체를 명시적으로 선언하는 경우 메서드를 호출할 때마다 새로운 객체가 생성된다. 람다는 다르다. 정의가 들어있는 함수의 변수에 접근하지 않는 람다에 대응하는 무명 객체를 메서드를 호출할 때마다 반복 사용한다.
+
+그러나 람다가 주변 영역의 변수를 포획한다면 매 호출마다 같은 인스턴스를 사용할 수 없다. 그런 경우 컴파일러는 매번 주변 영역의 변수를 포획한 새로운 인스턴스를 생성해준다.
+
+```kotlin
+fun handleComputation(id: String) { // 람다 안에서 id 변수를 포획한다.
+  postponeComputation(1000) { println(id) } // handleComputation을 호출할 때마다 새로 Runnable 인스턴스를 만든다.
+}
+```
+
+코틀린 `inline`으로 표시된 코틀린 함수에게 람다를 넘기면 아무런 무명 클래스도 만들어지지 않는다. 대부분의 코틀린 확장 함수들은 `inline` 표시가 붙어있다.
+
+### SAM 생성자: 람다를 함수형 인터페이스로 명시적으로 변경
+SAM 생성자는 람다를 함수형 인터페이스의 인스턴스로 변환할 수 있게 컴파일러가 자동으로 생성한 함수다. 컴파일러가 자동으로 람다를 함수형 인터페이스 무명 클래스로 바꾸지 못하는 경우 SAM 생성자를 사용할 수 있다.
+
+```kotlin
+fun createAllDoneRunnable(): Runnable {
+  return Runnable { println("All done!") }
+}
+```
+
+SAM 생성자의 이름은 사용하려는 함수형 인터페이스의 이름과 같다. SAM 생성자는 그 함수형 인터페이스의 유일한 추상 메서드의 본문에 사용할 람다만을 인자로 받아서 함수형 인터페이스를 구현하는 클래스의 인스턴스를 반환한다.
+
+## 수신 객체 지정 람다: with와 apply
+자바의 람다에는 없는 코틀린 람다의 독특한 기능이 있다. 그 기능은 바로 수신 객체를 명시하지 않고 람다의 본문 안에서 다른 객체의 메서드를 호출할 수 있게 하는 것이다. 그런 람다를 **수신 객체 지정 람다**라고 한다.
+
+### with 함수
+어떤 객체의 이름을 반복하지 않고도 그 객체에 대해 다양한 연산을 수행할 수 있다면 좋을 것이다. 다양한 언어가 그런 기능을 제공한다.
+
+```kotlin
+// with를 사용하지 않은 함수
+fun alphabet(): String {
+  val result = StringBuilder()
+  for (letter in 'A'..'Z') {
+    result.append(letter)
+  }
+  result.append("\nNow I know the alphabet!")
+  return result.toString()
+}
+
+// with를 사용하여 중복된 변수명을 제거한 함수 사용
+fun alphabet(): String {
+  val stringBuilder = StringBuilder()
+  return with(stringBuilder) { // 메서드를 호출하려는 수신 객체 지정
+    for (letter in 'A'..'Z') {
+      this.append(letter) // this를 명시해서 앞에서 지정한 수신 객체의 메서드 호출
+    }
+    append("\nNow I know the alphabet!") // this를 생략하고 메서드 호출
+    this.toString() // 람다에서 값을 반환한다.
+  }
+}
+```
+
+`with` 함수는 첫 번째 인자로 받은 객체를 두 번째 인자로 받은 람다의 수신 객체로 만든다. 인자로 받은 람다 본문에선 `this`를 사용해 그 수신 객체에 접근할 수 있다.
+
+`with`가 반환하는 값은 람다 코드를 실행한 결과며, 그 결과는 람다 식의 본문에 있는 마지막 식의 값이다. 하지만 때로는 람다의 결과 대신 수신 객체가 필요한 경우도 있다. 그럴 때는 `apply` 라이브러리 함수를 사용할 수 있다.
+
+### apply 함수
+`apply` 함수는 거의 `with`와 동일하다. 유일한 차이란 `apply`는 항상 자신에게 전달된 객체(즉 수신 객체)를 반환한다는 점뿐이다.
+
+```kotlin
+fun alphabet() = StringBuilder().apply {
+  for (letter in 'A'..'Z') {
+    append(letter)
+  }
+  append("\nNow I know the alphabet!")
+}.toString()
+```
+
+`with`와 `apply`는 수신 객체 지정 람다를 사용하는 일반적인 예제 중 하나다. 더 구체적인 함수를 비슷한 패턴으로 활용할 수 있다. 예를 들어 표준 라이브러리의 `buildString` 함수를 사용하면 `alphabet` 함수를 더 단순화할 수 있다.
+
+```kotlin
+fun alphabet() = buildString {
+  for (letter in 'A'..'Z') {
+    append(letter)
+  }
+  append("\nNow I know the alphabet!")
+}
+```
+
+`buildString` 함수는 `StringBuilder`를 활용해 `String`을 만드는 경우 사용할 수 있는 우아한 해법이다.
+
+## 요약
+- 람다를 사용하면 코드 조각을 다른 함수에게 인자로 넘길 수 있다.
+- 코틀린에서는 람다가 함수 인자인 경우 괄호 밖으로 람다를 빼낼 수 있고, 람다의 인자가 단 하나뿐인 경우 인자 이름을 지정하지 않고 `it`이라는 디폴트 이름으로 부를 수 있다.
+- 람다 안에 있는 코드는 그 람다가 들어있는 바깥 함수의 변수를 읽거나 쓸 수 있다.
+- 메소드, 생성자, 프로퍼티의 이름 앞에 `::`을 붙이면 각각에 대한 참조를 만들 수 있다. 그런 참조를 람다 대신 다른 함수에게 넘길 수 있다.
+- `filter`, `map`, `all`, `any` 등의 함수를 활용하면 컬렉션에 대한 대부분의 연산을 직접 원소를 이터페이션 하지 않고 수행할 수 있다.
+- 시퀀스를 사용하면 중간 결과를 담는 컬렉션을 생성하지 않고도 컬렉션에 대한 여러 연산을 조합할 수 있다.
+- 함수형 인터페이스(추상 메소드가 단 하나뿐인 SAM 인터페이스)를 인자로 받는 자바 함수를 호출할 경우 람다를 함수형 인터페이스 인자 대신 넘길 수 있다.
+- 수신 객체 지정 람다를 사용하면 람다 안에서 미리 정해둔 수신 객체의 메소드를 직접 호출할 수 있다.
+- 표준 라이브러리의 `with` 함수를 사용하면 어떤 객체에 대한 참조를 반복해서 언급하지 않으면서 그 객체의 메소드를 호출할 수 있다. `apply`를 사용하면 어떤 객체라도 빌더 스타일의 API를 사용해 생성하고 초기화할 수 있다.
