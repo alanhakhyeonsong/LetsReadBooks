@@ -416,3 +416,136 @@ Postman에서 호출하고 3분의 1 확률로 타임아웃이 발생할 때 서
 ---
 
 ## 벌크헤드 패턴 구현
+벌크헤드 패턴을 사용하지 않는다면 여러 마이크로서비스 호출의 기본 동작은 전체 자바 컨테이너에 대한 요청을 처리하려 예약된 동일한 스레드를 사용해서 실행한다. 대규모 요청이라면 하나의 서비스에 대한 성능 문제로 자바 컨테이너의 모든 스레드가 최대치에 도달하고, 작업이 처리되길 기다리는 동안 새로운 작업 요청들은 후순위로 대기한다. 결국 자바 컨테이너는 멈추게 된다.
+
+벌크헤드 패턴은 원격 자원 호출을 자체 스레드 풀에 격리해서 한 서비스의 오작동을 억제하고 컨테이너를 멈추지 않게 한다. Resilience4j는 벌크헤드 패턴을 위해 두 가지 다른 구현을 제공한다.
+
+- 세마포어 벌크헤드: 세마포어 격리 방식으로 서비스에 대한 동시 요청 수를 제한한다. 한계에 도달하면 동시 실행 수를 제한할 수 있다.
+- 스레드 풀 벌크헤더: 제한된 큐와 고정 스레드 풀을 사용한다. 이 방식은 풀과 큐가 다 찬 경우만 요청을 거부한다.
+
+Resilience4j는 기본적으로 세마포어 벌크헤드 타입을 사용한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/b13dce92-649b-4417-90ab-fff2d85d7189)
+
+위 모델은 애플리케이션에서 액세스하는 원격 자원의 수가 적고 각 서비스에 대한 호출량이 상대적으로 고르게 분산되어 있는 경우 잘 작동한다. 문제는 다른 서비스보다 호출량이 훨씬 많거나 완료하는 데 오래 걸리는 서비스가 있다면, 한 서비스가 기본 스레드 풀의 모든 스레드를 점유하기 때문에 모든 스레드를 소진하게 된다.
+
+Resilience4j는 서로 다른 원격 자원 호출 간 벌크헤드를 만들고자 사용하기 쉬운 메커니즘을 제공한다. 아래 그림은 관리 자원이 각 벌크헤드로 분리되었을 때를 잘 보여준다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/7d9c6710-b660-4d46-8fc8-ca50fbfcf75f)
+
+Resilience4j에서 벌크헤드 패턴을 구현하려면 `@CircuitBreaker`와 이 패턴을 결합하는 구성을 추가해야 한다.
+
+```yaml
+resilience4j.bulkhead: instances:
+    bulkheadLicenseService:
+        maxWaitDuration: 10ms // 스레드를 차단할 최대 시간
+        maxConcurrentCalls: 20 // 최대 동시 호출 수
+resilience4j.thread-pool-bulkhead:
+    instances:
+        bulkheadLicenseService:
+        maxThreadPoolSize: 1 // 스레드 풀에서 최대 스레드 수
+        coreThreadPoolSize: 1 // 코어 스레드 풀 크기
+        queueCapacity: 1 // 큐 용량
+        keepAliveDuration: 20ms // 유휴 스레드가 종료되기 전 새 태스크를 기다리는 최대 시간
+```
+
+Resilience4j를 사용하면 애플리케이션 프로퍼티를 통해 벌크헤드의 동작을 맞춤 설정할 수 있다.
+
+사용자에게 맞는 스레드 풀의 적절한 크기는 얼마일까? 이 질문을 답하는데 다음공식을 사용할 수 있다.
+
+- (서비스가 정상일 때 최고점에서 초당 요청 수 * 99 백분위수 지연시간) + 부하를 대비해서 약간의 추가 스레드
+
+서비스가 부하를 받는 상황에서 동작하기 전까지 서비스의 성능 특성을 알지 못할 경우가 많다. 스레드 풀 프로퍼티를 조정해야 하는 주요 지표는 대상이 되는 원격 자원이 정상인 상황에서도 서비스 호출이 타임아웃을 겪고 있을 때다.
+
+```kotlin
+@CircuitBreaker(name = "licenseService", fallbackMethod = "buildFallbackLicenseList")
+@Bulkhead(name = "bulkheadLicenseService", fallbackMethod = "buildFallbackLicenseList")
+fun getLicensesByOrganization(organizationId: String): List<License> {
+  logger.debug("getLicensesByOrganization Correlation id: {}", UserContextHolder.getContext().getCorrelationId())
+  randomlyRunLong()
+  return licenseRepository.findByOrganizationId(organizationId)
+}
+```
+
+벌크헤드 패턴은 세마포어 방식을 사용하며, 스레드 풀 방식으로 변경하려면 다음과 같이 애너테이션을 추가해야 한다.
+
+```kotlin
+@Bulkhead(name = "licenseService", type = Bulkhead.Type.THREADPOOL, fallbackMethod = "buildFallbackLicenseList")
+```
+
+## 재시도 패턴 구현
+재시도 패턴은 서비스가 처음 실패했을 때 서비스와 통신을 재시도하는 역할을 한다. 이 패턴의 핵심 개념은 고장이 나도 동일한 서비스를 한 번 이상 호출해서 기대한 응답을 얻을 수 있는 방법을 제공하는 것이다. 이 패턴의 경우 해당 서비스 인스턴스에 대한 재시도 횟수와 재시도 사이에 전달하려는 간격을 지정해야 한다.
+
+```yaml
+resilience4j.retry:
+    instances:
+        retryLicenseService:
+        maxRetryAttempts: 5 // 재시도 최대 횟수
+        waitDuration: 10000 // 재시도간 대기 시간
+        retry-exceptions: // 재시도 대상이 되는 예외 목록
+            - java.util.concurrent.TimeoutException
+```
+
+```kotlin
+@CircuitBreaker(name = "licenseService", fallbackMethod = "buildFallbackLicenseList")
+@Retry(name = "retryLicenseService", fallbackMethod = "buildFallbackLicenseList")
+@Bulkhead(name = "bulkheadLicenseService", fallbackMethod = "buildFallbackLicenseList")
+fun getLicensesByOrganization(organizationId: String): List<License> {
+  logger.debug("getLicensesByOrganization Correlation id: {}", UserContextHolder.getContext().getCorrelationId())
+  randomlyRunLong()
+  return licenseRepository.findByOrganizationId(organizationId)
+}
+```
+
+## 속도 제한기 패턴 구현
+재시도 패턴은 주어진 시간 내 소비할 수 있는 양보다 더 많은 호출로 발생하는 서비스 과부하를 막는다. 이 패턴은 고가용성과 안정성을 위한 API를 준비하는 데 필수 기술이다.
+
+Resilience4j는 속도 제한기 패턴을 위해 `AtomicRateLimiter`와 `SemaphoreBaseRateLimiter`라는 두 가지 구현체를 제공한다. `RateLimiter`의 기본 구현체는 `AtomicRateLimiter`다.
+
+`SemaphoreBaseRateLimiter`가 가장 단순하다.
+
+- 하나의 `java.util.concurrent.Semaphore`에 현재 스레드 허용 수를 저장하도록 구현되었다.
+- 모든 사용자 스레드는 `semaphore.tryAcquire()`를 호출하고 새로운 `limitRefreshPeriod`가 시작될 때 `semaphore.release()`를 실행하여 내부 스레드에 호출을 트리거한다.
+
+`AtomicRateLimiter`는 사용자 스레드가 직접 모든 허용 로직을 실행하기 때문에 스레드 관리가 필요 없다.
+
+- 시작부터 나노초 단위의 사이클로 분할하고 각 사이클 기간이 갱신 기간이다.
+- 매 사이클의 시작 시점에 가용한 허용 수를 설정함으로써 사이클 기간을 제한한다.
+
+```yaml
+resilience4j.ratelimiter:
+  instances:
+    licenseService:
+      timeoutDuration: 1000ms // 스레드가 허용을 기다리는 시간 정의
+      limitRefreshPeriod: 5000 // 갱신 제한 기간을 정의
+      limitForPeriod: 5 // 갱신 제한 기간 동안 가용한 허용 수 정의
+```
+
+```kotlin
+@CircuitBreaker(name = "licenseService", fallbackMethod = "buildFallbackLicenseList")
+@RateLimiter(name = "licenseService", fallbackMethod = "buildFallbackLicenseList")
+@Retry(name = "retryLicenseService", fallbackMethod = "buildFallbackLicenseList")
+@Bulkhead(name = "bulkheadLicenseService", fallbackMethod = "buildFallbackLicenseList")
+fun getLicensesByOrganization(organizationId: String): List<License> {
+   logger.debug("getLicensesByOrganization Correlation id: {}", UserContextHolder.getContext().getCorrelationId())
+   randomlyRunLong()
+   return licenseRepository.findByOrganizationId(organizationId)
+}
+```
+
+벌크헤드 패턴과 속도 제한기 패턴의 주요 차이점은 벌크헤드 패턴이 동시 호출 수를 제한하는 역할을 하고, 속도 제한기는 주어진 시간 프레임 동안 총 호출 수를 제한할 수 있다는 것이다.
+
+## 요약
+- 마이크로서비스처럼 고도로 분산된 애플리케이션을 설계할 때는 클라이언트 회복성을 고려해야 한다.
+- 서비스의 전면 장애는 쉽게 탐지하고 처리할 수 있다.
+- 성능이 낮은 서비스 하나가 자원을 소진하는 연쇄 효과를 유발할 수 있다. 서비스가 작업을 완료할 때까지 기다리는 동안 호출하는 클라이언트의 스레드가 블로킹되기 때문이다.
+- 세 가지 핵심 클라이언트 회복성 패턴은 회로 차단기 패턴, 폴백 패턴, 벌크헤드 패턴이다.
+- 회로 차단기 패턴은 느리게 수행되고 저하된 시스템 호출을 제거해서 이러한 호출은 빨리 실패하고, 자원 소진을 막는다.
+- 폴백 패턴은 원격 서비스 호출이 실패하거나 회로 차단기가 실패할 경우에 대체 코드 경로를 정의할 수 있다.
+- 벌크헤드 패턴은 원격 자원에 대한 호출을 자체 스레드 풀로 격리해서 원격 자원 호출을 서로 분리한다. 한 종류의 서비스 호출이 실패하면 이 실패 때문에 애플리케이션 컨테이너의 모든 자원이 소진되지 않도록 해야 한다.
+- 속도 제한기 패턴은 주어진 시간 동안 총 호출 수를 제한한다.
+- Resilience4j를 사용하면 여러 패턴을 동시에 사용할 수 있다.
+- 재시도 패턴은 서비스가 일시적으로 실패했을 때 시도하는 역할을 한다.
+- 벌크헤드 패턴과 속도 제한기 패턴의 주요 차이점은 벌크헤드는 한 번에 동시 호출 수를 제한하는 역할을 하고, 속도 제한기는 주어진 시간 동안 총 호출 수를 제한하는 역할을 한다.
+- 스프링 클라우드와 Resilience4j 라이브러리는 회로 차단기, 폴백, 속도 제한기, 벌크헤드 패턴에 대한 구현을 제공한다.
+- Resilience4j 라이브러리는 구성이 용이하며 전역, 클래스 및 스레드 풀 레벨로 설정할 수 있다.
