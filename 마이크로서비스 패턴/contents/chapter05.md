@@ -58,7 +58,7 @@ DDD에서 도메인 모델을 구축하는 데 흔히 쓰이는 빌딩 블록은
 - 서비스(service): 엔티티, 밸류 객체에 속하지 않은 비즈니스 로직 구현 객체
 
 ## 도메인 모델 설계: DDD 애그리거트 패턴
-전통적인 객체 지향 설계에 기반한 도메인 모델은 비즈니스 객체들의 경계가 불분명하다. 경걔가 불분명하면 마이크로서비스 아키텍처에서 문제가 생길 가능성이 높다.
+전통적인 객체 지향 설계에 기반한 도메인 모델은 비즈니스 객체들의 경계가 불분명하다. 경계가 불분명하면 마이크로서비스 아키텍처에서 문제가 생길 가능성이 높다.
 
 개념적으로도 모호하지만 경계가 불분명하면 비즈니스 객체를 업데이트할 때 문제가 생길 수 있다. 비즈니스 객체는 대부분 불변 값이 있고 필히 준수해야 할 비즈니스 규칙이 있다. 예를 들어 `Order` 객체는 최소 주문량이라는 불변 값이 있어서 주문을 업데이트할 때 이 값 이상의 양을 주문해야 한다. 그런데 이렇게 불변 값을 강제하려면 비즈니스 로직을 주의 깊게 설계해야 한다.
 
@@ -160,7 +160,7 @@ class OrderCreatedEvent implements OrderEvent {
 // Ticket 애그리거트와 accept() 메서드
 public class Ticket {
     
-    public List<TicketDomainEvnet> accept(LocalDateTime readyBy) {
+    public List<TicketDomainEvent> accept(LocalDateTime readyBy) {
         // ...
         this.acceptTime = LocalDateTime.now(); // Ticket 업데이트
         this.readyBy = readyBy;
