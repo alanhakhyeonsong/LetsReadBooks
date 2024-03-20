@@ -10,6 +10,8 @@
 - 단점: 비즈니스 로직을 작성하는 방법이 특이해서 어느정도 학습 시간이 필요하고, 이벤트 저장소를 쿼리하기 쉽지 않아 CQRS 패턴을 적용해야 한다.
 
 ### 기존 영속화의 문제점
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/956b5c2b-1165-4163-9916-319d849d0843)
+
 - 객체-관계 임피던스 부정합: OOP와 RDB간 기본 철학이 다르다.
 - 애그리거트 이력이 없다: 기존 영속화 메커니즘은 현재 애그리거트의 상태만 저장한다. 즉, 애그리거트가 업데이트되면 이전 상태는 사라지고 없다. 이력을 남기려면 개발자가 직접 코드를 구현해야 하고, 비즈니스 로직과 동기화해야 하는 코드를 중복 생성하게 된다.
 - 감사 로깅은 구현하기 힘들고 오류도 자주 발생한다: 여러 로깅을 종류별로 구현하기 번거럽고, 비즈니스 로직은 계속 변경되기 때문에 버그가 발생할 가능성이 높다.
@@ -36,20 +38,74 @@
 2. 기본 생성자를 호출하여 애그리거트 인스턴스를 생성한다.
 3. 이벤트를 하나씩 순회하며 `apply()`를 호출한다.
 
+#### 이벤트는 곧 상태 변화
+- 도메인 이벤트는 애그리거트의 변경을 구독자에게 알리는 장치로, 이벤트는 애그리거트 ID 같은 최소한의 필수 데이터만 넣거나 컨슈머에 유용한 데이터까지 포함시켜 강화할 수 있다.
+- **이벤트 소싱에선 이벤트가 필수다.** 생성을 비롯한 모든 애그리거트의 상태 변화를 도메인 이벤트로 나타내며, 애그리거트는 상태가 바뀔 때마다 반드시 이벤트를 발생시킨다.
+- 이벤트는 애그리거트가 상태 전이를 하기 위해 필요한 데이터를 갖고 있어야 한다. 애그리거트의 상태는 애그리거트를 구성한 객체의 필드 값들로 구성된다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/96b488cd-dca1-4c76-8e53-7ce91eb02300)
+
+#### 애그리거트 메서드의 관심사는 오직 이벤트
+- 비즈니스 로직은 애그리거트의 업데이트 요청을 애그리거트 루트에 있는 커맨드 메서드를 호출하여 처리한다.
+  - 기존에는 커맨드 메서드가 매개변수를 검증한 후 하나 이상의 애그리거트 필드를 업데이트했다.
+  - 이벤트 소싱을 사용하면 커맨드 메서드가 반드시 이벤트를 발생시킨다.
+  - 애그리거트의 커맨드 메서드를 호출한 결과는 상태 변경을 나타내는 일련의 이벤트다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/d151518e-838b-4d66-97bf-8b61c2e3e9a2)
+
+- 이벤트는 DB에 저장되며, 애그리거트에 적용되어 상태를 업데이트한다.
+- 이벤트 소싱은 커맨드 메서드 하나를 둘 이상의 메서드로 리팩터링한다.
+  - 요청을 나타낸 커맨드 객체를 매개변수로 받아 상태를 어떻게 변경해야 할지 결정. 애그리거트 상태는 바꾸지 않고 상태 변경을 나타낸 이벤트 목록을 반환한다. 수행할 수 없는 커맨드라면 예외를 던진다.
+  - 각자 정해진 이벤트 타입을 매개변수로 받아 애그리거트를 업데이트.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/060e43ab-77ad-4f25-9118-28aef550e640)
+
 ### 동시 업데이트: 낙관적 잠금
-여러 오쳥이 동일한 애그리거트를 동시에 업데이트하는 일은 드물지 않다. 기존 영속화 메커니즘은 대게 한 트랜잭션이 다른 트랜잭션의 변경을 덮어 쓰지 못하게 낙관적 잠금을 하여 처리한다.
+여러 요청이 동일한 애그리거트를 동시에 업데이트하는 일은 드물지 않다. 기존 영속화 메커니즘은 대게 한 트랜잭션이 다른 트랜잭션의 변경을 덮어 쓰지 못하게 낙관적 잠금을 하여 처리한다.
 
 이벤트 저장소 역시 낙관적 잠금 기법으로 동시 업데이트를 처리할 수 있다. 이벤트에 딸려온 버전 정보를 각 애그리거트 인스턴스마다 두고, 애플리케이션이 이벤트를 삽입할 때 이벤트 저장소가 버전 변경 여부를 체크하는 것이다.
 
-### 이벤트 발행: 폴링
-이벤트를 `EVENTS` 테이블에 저장한다 가정할 때, 이벤트 발생 순서와 커밋 시점의 차이로 인해 순서가 뒤섞일 수 있다. 이런 문제점은 이벤트 발행 여부를 추적할 수 있는 컬럼을 추가하는 것이다.
+### 이벤트 소싱과 이벤트 발행
+#### 이벤트 발행: 폴링
+이벤트를 `EVENTS` 테이블에 저장한다 가정할 때, 이벤트 발생 순서와 커밋 시점의 차이로 인해 순서가 뒤섞일 수 있다. 이런 문제점을 해결하는 한 가지 방법은 이벤트 발행 여부를 추적할 수 있는 컬럼을 추가하는 것이다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/77252261-507f-4789-b877-f9ebd1c6eec4)
 
 1. `SELECT * FROM EVENTS WHERE PUBLISHED = 0 ORDER BY EVENT_ID ASC` 쿼리로 미발행 이벤트 검색
 2. 메시지 브로커에 이벤트를 발행
 3. `UPDATE EVENTS SET PUBLISHED = 1 WHERE EVENT_ID = ?` 쿼리로 이벤트가 발행된 것으로 표시
 
+#### 이벤트 발행: 트랜잭션 로그 테일링
+트랜잭션 로그 테일링은 좀 더 정교한 방법이다. 이벤트 발행을 확실히 보장하면서도 성능/확장성이 우수하다.
+
 ### 스냅샷으로 성능 개선
 수명이 긴 애그리거트는 이벤트 수가 꽤 많아 일일이 로드/폴드하기 만만치 않다. 이 경우, 주기적으로 애그리거트 상태의 스냅샷을 저장하고 물리적인 조회 대상을 줄인 다음 이벤트를 조회하여 성능을 개선할 수 있다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/98395a8c-d3b7-43e1-902a-aaa29a867255)
+
+스냅샷 버전이 N이면 N+1 이후 발생한 이벤트 2개만 가져오면 애그리거트 상태를 되살릴 수 있다. 그 이전 이벤트 N개는 이벤트 저장소에서 가져올 필요가 없다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/c34d3018-d1ce-45a9-ad6a-8340079d2248)
+
+### 멱등한 메시지 처리
+서비스는 대부분 다른 애플리케이션 또는 서비스로부터 받은 메시지를 소비한다. 애그리거트가 발행한 도메인 이벤트나 사가 오케스트레이터가 보낸 커맨드 메시지를 소비한다. 그런데 메시지 브로커가 동일한 메시지를 여러 번 전송할 가능성이 있으므로 **메시지 컨슈머는 멱등하게 개발해야 한다.**
+
+메시지 컨슈머가 동일한 메시지를 여러 번 호출해도 안전하다면 멱등한 것이다.
+
+- 비즈니스 로직이 애그리거트를 생성/수정하는 로컬 ACID 트랜잭션의 일부로 처리한 메시지 ID를 `PROCESSED_MESSAGE` 테이블에 기록한다.
+- 이 테이블에 메시지 ID가 있으면 중복 메시지이므로 솎아내면 된다.
+
+이벤트 소싱 기반의 비즈니스 로직은 이런 메커니즘을 강구해야 한다.
+
+#### RDBMS 이벤트 저장소 사용
+메시지 ID는 `PROCESSED_MESSAGES` 테이블에, 이벤트는 `EVENTS` 테이블에 삽입하는 트랜잭션의 일부로 삽입하면 된다.
+
+#### NoSQL 이벤트 저장소 사용
+트랜잭션 모델이 제한적이라서 메시지를 멱등하게 처리하려면 다른 수단을 강구해야 한다. 메시지 컨슈머는 이벤트를 저장하고 메시지 ID를 기록하는 작업을 어느 정도 원자적으로 처리해야 한다.
+
+**메시지 컨슈머가 메시지 처리 도중 생성된 메시지 ID를 저장하는 것이다.** 해당 메시지 ID가 애그리거트의 이벤트에 있는지 확인하면 중복 메시지 여부를 알 수 있다.
+
+그러나 메시지 처리 결과 아무 이벤트도 생성되지 않을 수 있다. 이벤트가 없다는 것은 메시지 처리 기록 또한 전무하다는 뜻이고, 이후에 같은 메시지를 재전달/재처리하면 이상하게 동작할 수 있다. 해결 방법은 **항상 이벤트를 발행하는 것이다.** 애그리거트가 이벤트를 발생시키지 않을 경우, 오직 메시지 ID를 기록할 목적으로 가짜 이벤트를 저장한다. 이는 이벤트 컨슈머가 무시해야 한다.
 
 ### 이벤트 소싱의 장점
 - 도메인 이벤트를 확실하게 발행한다.
@@ -72,3 +128,64 @@ RDBMS에 이벤트를 그냥 저장하는 방법도 있지만, 성능/확장성�
 - Lagom
 - Axon
 - Eventuate
+
+### 이벤추에이트 로컬 이벤트 저장소의 작동 원리
+이벤트는 MySQL 등의 DB에 저장된다. 애플리케이션은 애그리거트 이벤트를 기본키로 조회/삽입하고, Apache Kafka 등의 메시지 브로커에서 이벤트를 가져와 소비한다. 트랜잭션 로그 테일링 장치는 끊임없이 DB에서 메시지 브로커로 이벤트를 퍼 나른다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/ca673cc1-ff0f-4b35-93e9-017cf5c69c1a)
+
+### 자바용 이벤추에이트 클라이언트 프레임워크
+이벤추에이트 클라이언트는 이벤추에이트 로컬 이벤트 저장소를 사용하는 이벤트 소싱 애플리케이션의 개발 프레임워크다. 이벤트 소싱 기반의 애그리거트, 서비스, 이벤트 핸들러 개발에 필요한 기반을 제공한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/3094e90e-7947-4c81-bb7f-517d388a1575)
+
+프레임워크의 구성 요소를 간략히 살펴보면 아래와 같다.
+
+```java
+public class Order extends ReflectiveMutableCommandProcessingAggregate<
+      Order, OrderCommand> {
+
+  public List<Event> process(CreateOrderCommand command) { ... }
+
+  public void apply(OrderCreatedEvent event) { ... }
+
+  ...
+}
+
+public interface OrderCommand extends Command {
+}
+
+public class CreateOrderCommand implements OrderCommand { ... }
+
+interface OrderEvent extends Event {
+
+}
+
+public class OrderCreated extends OrderEvent { ... }
+
+public class OrderService {
+  private AggregateRepository<Order, OrderCommand> orderRepository;
+
+  public OrderService(AggregateRepository<Order, OrderCommand> orderRepository)
+  {
+    this.orderRepository = orderRepository;
+  }
+
+  public EntityWithIdAndVersion<Order> createOrder(OrderDetails orderDetails) {
+    return orderRepository.save(new CreateOrder(orderDetails));
+  }
+}
+
+@EventSubscriber(id="orderServiceEventHandlers")
+public class OrderServiceEventHandlers {
+
+  @EventHandlerMethod
+  public void creditReserved(EventHandlerContext<CreditReserved> ctx) {
+    CreditReserved event = ctx.getEvent();
+    ...
+  }
+  //...
+}
+```
+
+## 사가와 이벤트 소싱을 접목
