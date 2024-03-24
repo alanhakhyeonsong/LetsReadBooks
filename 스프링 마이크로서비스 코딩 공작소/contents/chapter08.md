@@ -100,3 +100,50 @@ spring:
 스프링 액추에이터는 라우팅 구성 정보를 다시 로드할 수 있도록 POST 기반 엔드포인트 경로인 `actuator/gateway/refresh`를 노출한다. 이후 `/routes` 엔드포인트를 호출하면 두 개의 새로운 경로를 확인할 수 있다. 이 호출에 대한 응답은 body 없이 HTTP 200 상태 코드만 반환한다.
 
 ## 스프링 클라우드 게이트웨이의 진정한 능력: Predicate과 Filter Factories
+게이트웨이로 모든 요청을 프록시 할 수 있기 때문에 서비스 호출을 단순화할 수 있다. 하지만 진정한 힘은 게이트웨이를 통하는 모든 서비스 호출에 적용될 사용자 정의 로직을 작성할 때 발휘된다. 대부분의 경우 모든 서비스에서 보안, 로깅, 추적 등 일관된 애플리케이션 정책을 적용하기 위해 이런 사용자 정의 로직이 사용된다.
+
+- 횡단 관심사 로직을 스프링의 관점 클래스와 유사하게 사용할 수 있다.
+- 게이트웨이로 라우팅되는 모든 서비스에 대한 공통 관심사를 구현할 수 있다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/22fdae0e-0079-4724-a3fb-078577789925)
+
+### 게이트웨이 Predicate Factories
+게이트웨이의 서술자는 요청을 실행하거나 처리하기 전에 요청이 조건 집합을 충족하는지 확인하는 객체다. 경로마다 논리 AND로 결합할 수 있는 여러 Predicate Factories를 설정할 수 있다.
+
+이런 서술자는 코드에 프로그래밍 방식이나 구성 파일을 사용하여 적용할 수 있다.
+
+```yaml
+predicates
+  - Path=/organization/**
+```
+
+|Predicate|설명|예|
+|--|--|--|
+|Before|설정된 일시 전에 발생한 요청인지 확인|Before=2020-03-11T...|
+|After|설정된 일시 이후에 발생한 요청인지 확인|After=2020-03-11T...|
+|Between|설정된 두 일시 사이에 발생한 호출인지 확인. 시작 일시는 포함되고 종료 일시는 포함되지 않는다.|Between=2020-03-11T..., 2020-04-11T...|
+|Header|헤더 이름과 정규식 매개변수를 사용하여 해당 값과 정규식을 확인|Header=X-Request-Id, \d+|
+|Host|"." 호스트 이름 패턴으로 구분된 안티-스타일 패턴을 매개변수로 받아 Host 헤더를 주어진 패턴과 비교|Host=**.example.com|
+|Method|HTTP 메서드를 비교|Method=GET|
+|Path|스프링 PathMatcher를 사용|Path=/organization/{id}|
+|Query|필수 매개변수의 정규식 매개변수를 사용하여 쿼리 매개변수와 비교|Query=id, 1|
+|Cookie|쿠키 이름과 정규식 매개변수를 사용하여 HTTP 요청 헤더에서 쿠키를 찾아 그 값과 정규식이 일치하는지 비교|Cookie=SessionID, abc|
+|RemoteAddr|IP 목록에서 요청의 원격 주소와 비교|RemoteAddr=192.168.3.5/24|
+
+### 게이트웨이 Filter Factories
+게이트웨이의 Filter Factories를 사용하면 코드에 정책 시행 지점을 삽입하여 모든 서비스 호출에 대해 일관된 방식으로 작업을 수행할 수 있다. 즉, 이런 필터로 수신 및 발신하는 HTTP 요청과 응답을 수정할 수 있다.
+
+내장형 필터는 다음 문서를 참고하자.
+
+- [GatewayFilter Factories :: Spring Cloud Gateway](https://docs.spring.io/spring-cloud-gateway/reference/spring-cloud-gateway/gatewayfilter-factories.html)
+
+### 사용자 정의 필터
+스프링 클라우드 게이트웨이 내에서 필터를 사용하여 사용자 정의 로직을 만들 수 있다. 필터를 사용하여 각 서비스 요청이 통과하는 비즈니스 로직 체인을 구현할 수 있다. 다음 두 가지 종류의 필터를 지원한다.
+
+- 사전 필터: 실제 요청이 목적지로 전송되기 전에 호출된다. 일반적으로 서비스가 일관된 메시지 형식인지 확인하는 작업을 수행하거나 서비스를 호출하는 사용자가 인증되었는지 확인하는 게이트키퍼 역할을 한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/fb9e4565-ef72-49e1-aed2-180b5ace89df)
+
+- 사후 필터: 사후 필터는 대상 서비스 이후에 호출되고 응답은 클라이언트로 다시 전송된다. 일반적으로 대상 서비스의 응답을 다시 기록하거나 오류를 처리하거나 민감한 정보에 대한 응답을 검사하려고 사후 필터를 구현한다.
+
+![image](https://github.com/alanhakhyeonsong/LetsReadBooks/assets/60968342/ded1e99e-5755-4320-aa0a-80fe01597753)
