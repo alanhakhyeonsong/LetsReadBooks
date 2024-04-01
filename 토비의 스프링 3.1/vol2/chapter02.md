@@ -113,3 +113,8 @@ public class MemberDao {
   - `SimpleJdbcTemplate`의 생성이나 `DataSource`의 주입 같은 부분은 슈퍼 클래스에서 처리하도록 만든다.
   - DAO 클래스에 상속관계를 만드는 데 문제가 없다면 가장 깔끔한 방법이다.
 
+## JPA
+### EntityManagerFactory 등록
+
+
+## 트랜잭션
