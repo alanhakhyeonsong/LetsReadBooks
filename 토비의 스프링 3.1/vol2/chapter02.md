@@ -118,3 +118,70 @@ public class MemberDao {
 
 
 ## 트랜잭션
+선언적 트랜잭션 경계설정을 사용하면 이전 방식의 문제를 모두 해결할 수 있다.
+
+- 트랜잭션이 시작되고 종료되는 지점은 별도의 설정을 통해 결정된다.
+- 작은 단위로 분리되어 있는 데이터 액세스 로직과 비즈니스 로직 컴포넌트와 메소드를 조합해서 하나의 트랜잭션에서 동작하게 만드는 것도 간단하다.
+- 의미 있는 작은 단위로 만들어진 오브젝트와 메소드를 적절한 순서대로 조합해서 호출하기만 하면 코드의 중복 없이 다양한 트랜잭션 안에서 동작하는 코드를 만들 수 있다.
+
+EJB의 선언적 트랜잭션 기능을 복잡한 환경이나 구현조건 없이 평범한 POJO로 만든 코드에 적용하게 해주는 것이 바로 스프링이다.
+
+스프링의 선언적 트랜잭션은 매우 매력적인 기능이다. JavaEE 서버에서 동작하는 엔티티빈이나 JPA로 만든 컴포넌트에 JTA를 이용한 글로벌 트랜잭션을 적용해야만 가능했던 고급 기능을 간단한 톰캣 서버에서 동작하는 가벼운 애플리케이션에도 적용해주기 때문이다.
+
+### 트랜잭션 추상화와 동기화
+스프링이 제공하는 트랜잭션 서비스는 **트랜잭션 추상화와 트랜잭션 동기화 두 가지로 생각해볼 수 있다.**
+
+트랜잭션 서비스의 종류는 데이터 액세스 기술보다 더 다양하다. 트랜잭션 서비스는 데이터 액세스 기술은 변하지 않더라도 환경에 따라 바뀔 수 있기 때문이다. 또, 스프링 없이 선언적 트랜잭션을 이용하려면 특정 기술과 서버 플랫폼, 특정 트랜잭션 서비스에 종속될 수 밖에 없다.
+
+**스프링은 데이터 액세스 기술과 트랜잭션 서비스 사이의 종속성을 제거하고 스프링이 제공하는 트랜잭션 추상 계층을 이용해 트랜잭션 기능을 활용하도록 만들어준다.** 또한, **스프링의 트랜잭션 동기화는 트랜잭션을 일정 범위 안에서 유지해주고, 어디서든 자유롭게 접근할 수 있게 만들어준다.**
+
+#### PlatformTransactionManager
+스프링 트랜잭션 추상화의 핵심 인터페이스는 `PlatformTransactionManager`다. 모든 스프링의 트랜잭션 기능과 코드는 이 인터페이스를 통해 로우레벨의 트랜잭션 서비스를 이용할 수 있다.
+
+```java
+public interface PlatformTransactionManager {
+    TransactionStatus getTransaction(TransactionDefinition definition) throws TransactionException;
+
+    void commit(TransactionStatus status) throws TransactionException;
+
+    void rollback(TransactionStatus status) throws TransactionException;
+}
+```
+
+`PlatformTransactionManager`는 트랜잭션 경계를 지정하는데 사용한다. **트랜잭션이 어디서 시작하고 종료하는지, 종료할 때 정상 종료인지 비정상 종료인지를 결정하는 것이다.** 스프링에선 시작과 종료를 트랜잭션 전파 기법을 이용해 자유롭게 조합하고 확장할 수 있다.
+
+`getTransaction()` 메소드는 트랜잭션 속성에 따라 새로 시작하거나 진행 중인 트랜잭션에 참여하거나, 진행 중인 트랜잭션을 무시하고 새로운 트랜잭션을 만드는 식으로 상황에 따라 다르게 동작한다.
+
+`TransactionDefinition`은 트랜잭션의 네 가지 속성을 나타내는 인터페이스다. `TransactionStatus`는 현재 참여하고 있는 트랜잭션의 ID와 구분정보를 담고 있다. 커밋 또는 롤백 시에 이 `TransactionStatus`를 사용한다.
+
+#### 트랜잭션 매니저의 종류
+스프링이 제공하는 `PlatformTransactionManager` 구현 클래스를 살펴보자.
+
+- `DataSourceTransactionManager`
+  - `Connection`의 트랜잭션 API를 이용해서 트랜잭션을 관리해주는 트랜잭션 매니저다.
+  - 이 트랜잭션 매니저를 사용하려면 트랜잭션을 적용할 `DataSource`가 스프링의 빈으로 등록돼야 한다.
+  - JDBC, MyBatis에 적용할 수 있다.
+  - `DataSourceTransactionManager`가 사용할 `DataSource`는 `getConnection()`이 호출될 때마다 매번 새로운 `Connection`을 돌려줘야 한다. `ThreadLocal` 등을 이용해 트랜잭션을 저장해두고 돌려주는 특별한 기능을 가진 `DataSource`를 사용하면 안 된다.
+  - `JdbcTemplate`이나 `SqlMapClientTemplate`처럼 내부에서 `Connection`과 트랜잭션 작업을 알아서 처리해주는 템플릿을 사용하는 방법이 제일 좋다.
+  - 서버가 제공하는 `DataSource`와 트랜잭션 서비스를 JNDI로 접근해 사용해야 한다면 `DataSourceTransactionManager`는 사용할 수 없다. 그때는 JTA를 지원하는 스프링의 트랜잭션 매니저를 사용해야 한다.
+  - 하나 이상의 DB에 대한 작업을 트랜잭션으로 묶어야 하는 경우에도 JTA를 써야 한다.
+- `JpaTransactionManager`
+  - JPA를 사용하는 DAO에서 사용한다.
+  - JTA로 트랜잭션 서비스를 이용하는 경우엔 `JpaTransactionManager`가 필요 없다.
+  - `JpaTransactionManager`엔 `LocalContainerEntityManagerFactoryBean` 타입의 빈을 프로퍼티로 등록해줘야 한다. (Spring Data JPA를 사용할 때 내부 구조를 찾아봐야 할 것 같다.)
+  - `JpaTransactionManager`는 `DataSourceTransactionManager`가 제공하는 `DataSource` 레벨의 트랜잭션 관리 기능을 동시에 제공한다.
+- `JtaTransactionManager`
+  - 하나 이상의 DB 또는 트랜잭션 리소스가 참여하는 글로벌 트랜잭션을 적용하려면 JTA를 이용해야 한다.
+  - 여러 개의 트랜잭션 리소스에 대한 작업을 하나의 트랜잭션으로 묶을 수 있고, 여러 대의 서버에 분산되어 진행되는 작업을 트랜잭션으로 연결해주기도 한다.
+  - 트랜잭션 서비스를 제공하는 WAS를 이용하거나 독립 JTA 서비스를 제공해주는 프레임워크를 사용해야 한다.
+  - DB가 하나라면 트랜잭션 매니저 또한 하나만 등록돼야 한다.
+  - DB가 여러 개라도 JTA를 이용해 글로벌 트랜잭션을 적용할 것이라면 `JtaTransactionManager` 하나만 등록돼야 한다.
+  - 단, 두 개 이상의 DB를 완전히 독립적으로 사용하는 경우라면 두 개 이상의 트랜잭션 매니저를 등록할 수는 있다.
+  - DB가 두 개라면 `DataSource`도 두 개가 등록돼야 한다.
+
+### 트랜잭션 경계설정 전략
+트랜잭션의 시작과 종료가 되는 경계는 보통 서비스 계층 오브젝트의 메소드다. 비즈니스 로직이 거의 없어서 서비스 계층과 데이터 액세스 계층을 통합했다면, 통합된 계층의 메소드가 트랜잭션 경계가 될 것이다.
+
+트랜잭션 경계를 설정하는 방법은 코드에 의한 프로그래밍적인 방법과, AOP를 이용한 선언적인 방법으로 구현할 수 있다.
+
+#### 코드에 의한 트랜잭션 경계 설정
