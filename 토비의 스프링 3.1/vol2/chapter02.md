@@ -185,3 +185,42 @@ public interface PlatformTransactionManager {
 트랜잭션 경계를 설정하는 방법은 코드에 의한 프로그래밍적인 방법과, AOP를 이용한 선언적인 방법으로 구현할 수 있다.
 
 #### 코드에 의한 트랜잭션 경계 설정
+스프링의 트랜잭션 매니저는 모두 `PlatformTransactionManager`를 구현하고 있다. 따라서 이 인터페이스로 현재 등록되어 있는 트랜잭션 매니저 빈을 가져올 수 있다면 트랜잭션 매니저의 종류에 상관없이 동일한 방식으로 트랜잭션을 제어하는 코드를 만들 수 있다. 트랜잭션을 처리하기 위해 `PlatformTransactionManager`의 메소드를 직접 사용해도 되지만 `try/catch` 블록을 써야 하는 번거로움이 발생한다. 트랜잭션 안에서 작업 중 예외가 발생한 경우엔 트랜잭션을 롤백해주도록 만들어야 하기 때문이다.
+
+**그래서 `PlatformTransactionManager`의 메소드를 직접 사용하는 대신 템플릿/콜백 방식의 `TransactionTemplate`을 이용하면 편리하다.**
+
+스프링의 트랜잭션 서비스 추상화와 동기화 기법 덕에 기술에서 독립적인 트랜잭션 코드를 만들 수 있다.
+
+```java
+public class MemberService {
+    @Autowired
+    private MemberDao memberDao;
+    private TransactionTemplate transactionTemplate;
+
+    @Autowired
+    public void init(PlatformTransactionManager transactionManager) {
+        this.transactionTemplate = new TransactionTemplate(transactionManager);
+    }
+
+    public void addMembers(final List<Member> members) {
+        this.transactionTemplate.execute(new TransactionCallback {
+            public Object doInTransaction(TransactionStatus status) {
+                for (Member m : members) {
+                  memberDao.addMember(m);
+                }
+                return null;
+            }
+        });
+    }
+}
+```
+
+트랜잭션의 기본 속성을 변경하려면 `TransactionTemplate`을 만들 때 `TransactionDefinition` 오브젝트를 만들어서 파라미터로 제공해주면 된다. 기본 속성을 사용한다면 위의 코드처럼 한 번 만들어주고 재사용할 수도 있다.
+
+**이런 방식보단 대개는 선언적 트랜잭션 방식을 많이 사용한다.** 이를 잘 사용하지 않더라도 알아두면 좋다.
+
+#### 선언적 트랜잭션 경계 설정
+선언적 트랜잭션을 사용하면 코드에는 전혀 영향을 주지 않음녀서 특정 메소드 실행 전후에 트랜잭션이 시작되고 종료되거나 기존 트랜잭션에 참여하도록 만들 수 있다. 이를 위해선 데코레이터 패턴을 적용한 트랜잭션 프록시 빈을 사용해야 한다.
+
+**선언적 트랜잭션의 경계설정은 트랜잭션 프록시 빈 덕분에 가능한 것이다.** 트랜잭션은 대부분 성격이 비슷하기 때문에 적용 대상마다 일일이 선언해주기보단 일괄적으로 선언하는 것이 편리하다. 그래서 간단한 설정으로 특정 부가기능을 임의의 타깃 오브젝트에 부여해줄 수 있는 프록시 AOP를 주로 활용한다.
+
