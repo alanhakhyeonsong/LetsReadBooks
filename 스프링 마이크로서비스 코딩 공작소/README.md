@@ -2,7 +2,7 @@
 ## 목차
 - [1장. 스프링, 클라우드와 만나다](./contents/chapter01.md)
 - [2장. 스프링 클라우드와 함께 마이크로서비스 세계 탐험](./contents/chapter02.md)
-- 3장. 스프링 부트로 마이크로서비스 구축하기
+- [3장. 스프링 부트로 마이크로서비스 구축하기](./contents/chapter03.md)
 - [4장. 도커](./contents/chapter04.md)
 - [5장. 스프링 클라우드 컨피그 서버로 구성 관리](./contents/chapter05.md)
 - [6장. 서비스 디스커버리](./contents/chapter06.md)
