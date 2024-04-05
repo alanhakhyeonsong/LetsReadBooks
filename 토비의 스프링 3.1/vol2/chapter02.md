@@ -115,7 +115,81 @@ public class MemberDao {
 
 ## JPA
 ### EntityManagerFactory 등록
+JPA 퍼시스턴스 컨텍스트에 접근하고 엔티티 인스턴스를 관리하려면 JPA의 핵심 인터페이스인 `EntityManager`를 구현한 오브젝트가 필요하다. `EntityManager`는 JPA에서 두 가지 방식으로 관리된다.
 
+- 애플리케이션이 관리하는 `EntityManager`
+- 컨테이너가 관리하는 `EntityManager`
+
+#### LocalEntityManagerFactoryBean
+`LocalEntityManagerFactoryBean`은 JPA 스펙의 JavaSE 기동 방식을 이용해 `EntityManagerFactory`를 생성해준다. 이 방식은 JPA만을 사용하는 단순한 환경에 적용할 순 있지만 스프링에서 본격적으로 사용하기엔 많은 제약사항이 있다. 가장 큰 단점은 스프링의 빈으로 등록한 `DataSource`를 사용할 수 없다는 것이다. 스프링이 제공하는 바이트코드 위빙 기법도 적용할 수 없다.
+
+많은 제약사항이 있기 때문에 굳이 사용하려 한다면 스프링 기반의 독립형 애플리케이션이나 통합 테스트 정도에서 사용할 수 있다. 실전에선 사용하지 않는게 좋으니 이런게 있다고만 알고 있자.
+
+#### JavaEE 5 서버가 제공하는 EntityManagerFactory
+JPA는 JavaEE에서 서버가 제공하는 JPA 프로바이더를 통해 사용하는 것이 일반적이다. 스프링 애플리케이션에선 JNDI를 통해 서버가 제공하는 `EntityManager`와 `EntityManagerFactory`를 제공받을 수 있다. 또 서버의 JTA를 이용해 트랜잭션 관리 기능을 활용할 수 있다.
+
+#### LocalContainerEntityManagerFactoryBean
+스프링이 직접 제공하는 컨테이너 관리 `EntityManager`를 위한 `EntityManagerFactory`를 만들어준다. 이 방법을 이용하면 JavaEE 서버에 배치하지 않아도 컨테이너에서 동작하는 JPA의 기능을 활용할 수 있을 뿐만 아니라, 스프링이 제공하는 일관성 있는 데이터 액세스 기술의 접근 방법을 적용할 수 있고 스프링의 JPA 확장 기능도 활용할 수 있다.
+
+`LocalContainerEntityManagerFactoryBean`의 필수 프로퍼티는 빈으로 등록된 `dataSource`를 지정해주는 것뿐이다.
+
+그 외에 다음과 같은 프로퍼티를 추가할 수 있다.
+
+- `persistenceUnitName`
+- `persistenceXmlLocation`
+- `jpaProperties`, `jpaPropertyMap`
+- `jpaVendorAdapter`
+- `loadtimeWeaver`
+
+---
+
+JPA는 POJO 클래스를 ORM의 엔티티로 사용한다. **POJO 방식의 단점은 한번 오브젝트가 만들어지면 그 뒤엔 컨테이너가 직접 관리할 수 없다는 점이다.** 엔티티 사이의 관계도 JPA의 인터페이스를 이용해 접근하지 않고 직접 POJO 오브젝트끼리 연결되어 있다. 따라서 JPA 프로바이더나 컨테이너가 특별한 기능을 제공하기 위해 끼어들 여지가 없다.
+
+JPA는 그래서 단순한 자바 코드로 만들어진 엔티티 클래스의 **바이트코드를 직접 조작해서 확장된 기능을 추가하는 방식을 이용한다.** 이를 통해 엔티티 오브젝트 사이에 지연된 로딩이 가능하고, 엔티티 값의 변화를 추적할 수 있으며, 최적화와 그룹 페칭 등의 고급 기능을 적용할 수 있다. 이렇게 이미 컴파일된 클래스 바이트코드를 조작해서 새로운 기능을 추가하는 것을 **바이트코드 향상 기법**이라 한다.
+
+클래스의 바이트코드를 향상시키는 방법은 두 가지가 있다.
+
+- 바이트코드를 빌드 중에 변경하는 것
+- 런타임 시에 클래스 바이트코드를 메모리에 로딩하면서 다이내믹하게 바이트코드를 변경해서 기능을 추가하는 것
+
+**두 번째 방법을 로드타임 위빙이라 하고 이런 기능을 가진 클래스를 로드타임 위버라고 부른다.**
+
+Java 에이전트는 JVM을 통해 로딩되는 모든 클래스를 일일이 다 확인하므로 성능이 좋지 않다. **그래서 스프링은 Java 에이전트를 대신할 수 있는 특별한 클래스 로더를 이용해서 로드타임 위빙 기능을 적용할 수 있는 방법을 제공한다.** 스프링에는 JPA의 엔티티 클래스 향상 외에도 바이트코드 조작이 필요한 기능이 있다.
+
+---
+
+#### 트랜잭션 매니저
+컨테이너가 관리하는 `EntityManager` 방식에선 컨테이너가 제공하는 트랜잭션 매니저가 반드시 필요하다. 애플리케이션 관리 `EntityManager`에선 코드에서 직접 트랜잭션을 제어할 수 있지만, 이 방법은 테스트 목적이 아니라면 권장되지 않는다.
+
+따라서 스프링의 `EntityManager`를 사용하려면 **적절한 트랜잭션 매니저가 등록되어 있어야 한다.** 스프링 JDBC는 트랜잭션 매니저가 없어도 동작한다. JDBC 자체가 자동 트랜잭션 모드를 갖고 있기 때문에 명시적으로 관리를 해주지 않아도 된다. 반면 JPA는 반드시 트랜잭션 안에서 동작하도록 설계되어 있다.
+
+`JpaTransactionManager`를 등록하고 `EntityManagerFactory` 빈을 프로퍼티에 등록해주면 된다. JPA를 사용하는 DAO 코드는 스프링이 관리하는 트랜잭션 관리 기능을 이용할 수 있다. `@Transactional`이나 트랜잭션 AOP를 이용해 트랜잭션 경계설정을 해주면 자동으로 JPA 트랜잭션을 시작하고 커밋하도록 만들 수 있다.
+
+`JpaTransactionManager`를 사용하면 같은 `DataSource`를 공유하는 JDBC DAO와 트랜잭션을 공유할 수도 있다. JPA가 JTA 트랜잭션을 이용하는 경우라면 `JtaTransactionManager`를 사용해야 한다.
+
+### EntityManager와 JpaTemplate
+`EntityManager`를 사용해 JPA 코드를 작성하는 가장 대표적인 방법은 컨테이너가 제공하는 `EntityManager`를 직접 제공받아 사용하는 것이다. DAO가 컨테이너로부터 `EntityManager`를 직접 주입받으려면 JPA의 `@PersistenceContext`를 사용해야 한다.
+
+`EntityManager`는 스프링의 빈으로 등록되지 않는다. 빈으로 등록한 것은 `EntityManagerFactory` 타입의 빈을 생성하는 `LocalContainerEntityManagerFactoryBean`이다. 따라서 `@Autowired` 같은 스프링의 DI 방법으론 `EntityManager`를 주입받을 수 없다.
+
+하지만 스프링엔 JPA의 스펙에 나오는 JavaEE 컨테이너가 관리하는 `EntityManager`를 주입받는 방법을 스프링 애플리케이션의 코드에도 동일하게 사용할 수 있다.
+
+```java
+public class MemberDao {
+    @PersistenceContext
+    EntityManager em;
+
+    public void addMember(Member member) {
+        em.persist(member);
+    }
+}
+```
+
+원래 `EntityManager`는 이렇게 인스턴스 변수에 한 번 주입받아 계속 재사용할 수 있는게 아니다. `EntityManager`는 그 자체로 멀티스레드에서 공유해서 사용할 수 없다. `Connection`을 하나 가져와 DAO에서 계속 재사용할 수 없는 것과 마찬가지다. 사용자의 요청에 따라 만들어지는 스레드별로 독립적인 `EntityManager`가 만들어져 사용돼야 한다. **트랜잭션마다 하나씩만 만들어져서 사용되고 종료되면 함께 제거돼야 하는데 이것이 가능한 이유는 `@PersistenceContext`로 주입받는 `EntityManager`는 실제 `EntityManager`가 아니라 현재 진행 중인 트랜잭션에 연결되는 퍼시스턴스 컨텍스트를 갖는 일종의 프록시기 때문이다.**
+
+`EntityManager`의 `type` 엘리먼트는 디폴트 값인 `PersistenceContextType.TRANSACTION`이 적용된다.
+
+이렇게 트랜잭션 스코프의 컨텍스트를 갖는 `EntityManager`를 사용하면 번거롭게 `EntityManagerFactory`로부터 `EntityManager`를 매번 생성할 필요가 없을 뿐만 아니라 트랜잭션 동기화를 위해 스프링이 제공해주는 템플릿/콜백 방식을 사용하지 않아도 된다.
 
 ## 트랜잭션
 선언적 트랜잭션 경계설정을 사용하면 이전 방식의 문제를 모두 해결할 수 있다.
