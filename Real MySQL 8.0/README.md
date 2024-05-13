@@ -10,7 +10,7 @@
 - [11장. 쿼리 작성 및 최적화](./contents/chapter11.md)
 - 13장. 파티션
 - 14장. 스토어드 프로그램
-- 15장. 데이터 타입
+- [15장. 데이터 타입](./contents/chapter15.md)
 - 16장. 복제
 - 17장. InnoDB 클러스터
 - 18장. Performance 스키마 & Sys 스키마
