@@ -4,7 +4,7 @@
 - [Chapter 1 - 대규모 웹 서비스 개발 오리엔테이션](./contents/chapter01.md)
 - [Chapter 2 - 대규모 데이터 처리 입문](./contents/chapter02.md)
 - [Chapter 3 - OS 캐시와 분산](./contents/chapter03.md)
-- Chapter 4 - DB 스케일아웃 전략
+- Chapter 4 - 분산을 고려한 MySQL 운용
 - Chapter 5 - 대규모 데이터 처리 실전 입문
 - Chapter 6 - 압축 프로그래밍
 - Chapter 7 - 알고리즘 실용화
