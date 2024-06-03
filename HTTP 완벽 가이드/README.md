@@ -10,7 +10,7 @@
 ### 2. HTTP 아키텍처
 - [5장. 웹 서버](./contents/chapter05.md)
 - [6장. 프락시](./contents/chapter06.md)
-- 7장. 캐시
+- [7장. 캐시](./contents/chapter07.md)
 - [8장. 통합점: 게이트웨이, 터널, 릴레이](./contents/chapter08.md)
 - 9장. 웹 로봇
 - [10장. HTTP/2.0](./contents/chapter10.md)
