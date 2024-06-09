@@ -7,7 +7,7 @@
 - [Chapter 4 - 분산을 고려한 MySQL 운용](./contents/chapter04.md)
 - [Chapter 5 - 대규모 데이터 처리 실전 입문](./contents/chapter05.md)
 - Chapter 6 - 압축 프로그래밍
-- Chapter 7 - 알고리즘 실용화
+- [Chapter 7 - 알고리즘 실용화](./contents/chapter07.md)
 - Chapter 8 - 하테나 키워드링크 구현
 - Chapter 9 - 전문 검색 기술 도전
 - Chapter 10 - 전문 검색엔진 작성
