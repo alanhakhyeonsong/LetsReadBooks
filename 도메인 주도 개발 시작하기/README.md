@@ -10,5 +10,5 @@
 - [Chapter 7. 도메인 서비스](./contents/chapter07.md)
 - [Chapter 8. 애그리거트 트랜잭션 관리](./contents/chapter08.md)
 - [Chapter 9. 도메인 모델과 바운디드 컨텍스트](./contents/chapter09.md)
-- Chapter 10. 이벤트
+- [Chapter 10. 이벤트](./contents/chapter10.md)
 - [Chapter 11. CQRS](./contents/chapter11.md)
