@@ -9,7 +9,7 @@
 - Chapter 6 - 압축 프로그래밍
 - [Chapter 7 - 알고리즘 실용화](./contents/chapter07.md)
 - Chapter 8 - 하테나 키워드링크 구현
-- Chapter 9 - 전문 검색 기술 도전
+- [Chapter 9 - 전문 검색 기술 도전](./contents/chapter09.md)
 - Chapter 10 - 전문 검색엔진 작성
 - Chapter 11 - 대규모 데이터 처리를 지탱하는 서버/인프라 입문
 - Chapter 12 - 확장성 확보에 필요한 사고방식
