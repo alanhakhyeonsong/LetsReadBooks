@@ -11,7 +11,7 @@
 - Chapter 8 - 하테나 키워드링크 구현
 - [Chapter 9 - 전문 검색 기술 도전](./contents/chapter09.md)
 - Chapter 10 - 전문 검색엔진 작성
-- Chapter 11 - 대규모 데이터 처리를 지탱하는 서버/인프라 입문
+- [Chapter 11 - 대규모 데이터 처리를 지탱하는 서버/인프라 입문](./contents/chapter11.md)
 - Chapter 12 - 확장성 확보에 필요한 사고방식
 - Chapter 13 - 다중성 확보, 시스템 안정화
 - Chapter 14 - 효율향상전략
