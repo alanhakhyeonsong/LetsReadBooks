@@ -5,7 +5,7 @@
 - [3장. 관계형 데이터베이스 매핑](./contents/chapter03.md)
 - [4장. 웹 프레젠테이션](./contents/chapter04.md)
 - 5장. 동시성
-- 6장. 세션 상태
+- [6장. 세션 상태](./contents/chapter06.md)
 - 7장. 분산 전략
 - 8장. 종합
 ---
