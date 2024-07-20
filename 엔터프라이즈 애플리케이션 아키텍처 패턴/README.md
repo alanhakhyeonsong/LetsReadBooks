@@ -6,7 +6,7 @@
 - [4장. 웹 프레젠테이션](./contents/chapter04.md)
 - [5장. 동시성](./contents/chapter05.md)
 - [6장. 세션 상태](./contents/chapter06.md)
-- 7장. 분산 전략
+- [7장. 분산 전략](./contents/chapter07.md)
 - 8장. 종합
 ---
 - 9장. 도메인 논리 패턴
