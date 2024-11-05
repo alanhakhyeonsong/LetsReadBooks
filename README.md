@@ -12,6 +12,7 @@ Since July 2021 By.Ramos
 
 - 모던 자바 인 액션 - 게이브리얼 우르마, 마리오 푸스코, 앨런 마이크로프트 (End)
 - 이펙티브 자바 3판 - 조슈아 블로크 (End)
+- The Well-Grounded Java Developer, Second Edition - 벤저민 J. 에번스, 제이슨 클라크, 마르테인 페르뷔르흐
 - 개발자가 반드시 알아야 할 자바 성능 튜닝 이야기 - 이상민 (End)
 - 객체지향의 사실과 오해 - 조영호 (End)
 - 오브젝트 - 조영호 (End)
