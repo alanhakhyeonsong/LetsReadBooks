@@ -5,7 +5,7 @@
 - Chapter 2. 자바 모듈
 - Chapter 3. 자바 17
 - Chapter 4. 클래스 파일과 바이트 코드
-- Chapter 5. 자바 동시성 기초
+- [Chapter 5. 자바 동시성 기초](./contents/chapter05.md)
 - Chapter 6. JDK 동시성 라이브러리
 - Chapter 7. 자바 성능 이해하기
 - Chapter 8. 다른 JVM 언어
