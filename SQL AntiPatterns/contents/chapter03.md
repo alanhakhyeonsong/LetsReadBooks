@@ -23,7 +23,7 @@ CREATE TABLE Comments (
   FOREIGN KEY (parent_id) REFERENCES Comments(comment_id),
   FOREIGN KEY (bug_id)    REFERENCES Bugs(bug_id),
   FOREIGN KEY (author)    REFERENCES Accounts(account_id),
-)
+);
 ```
 
 위 설계는 인접 목록이라 불린다. 단점은 다음과 같다.
