@@ -167,7 +167,7 @@ public synchronized boolean transferTo(FSOAccount other, int amount) {
 
 두 개의 트랜잭션이 별도의 스레드에 의해 수행된다 가정한다. 잠깐의 `sleep()` 때문에 교착상태의 가능성이 열렸다. → 전송 메서드를 진행하기 전에 각 스레드가 다른 스레드가 보유한 잠금을 해제해야 해서 멈춰버린다.
 
-// TODO deadlock 상태의 스레드 그림 추가
+<img width="452" alt="image" src="https://github.com/user-attachments/assets/945af578-3621-4079-b4bd-f10d2c2059ad">
 
 - 모든 스레드에서 항상 동일한 순서로 잠금을 획득하도록 해야 처리 가능해진다.
 
