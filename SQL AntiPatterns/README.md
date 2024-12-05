@@ -7,7 +7,7 @@
 - [5장. 키가 없는 엔트리](./contents/chapter05.md)
 - [6장. 엔터티-속성-값](./contents/chapter06.md)
 - [7장. 다형성 연관](./contents/chapter07.md)
-- 8장. 다중 칼럼 속성
+- [8장. 다중 칼럼 속성](./contents/chapter08.md)
 - 9장. 메타데이터 트리블
 
 ### 2부. 물리적 데이터베이스 설계 안티패턴
