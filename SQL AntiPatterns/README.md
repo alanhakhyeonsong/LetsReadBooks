@@ -8,7 +8,7 @@
 - [6장. 엔터티-속성-값](./contents/chapter06.md)
 - [7장. 다형성 연관](./contents/chapter07.md)
 - [8장. 다중 칼럼 속성](./contents/chapter08.md)
-- 9장. 메타데이터 트리블
+- [9장. 메타데이터 트리블](./contents/chapter09.md)
 
 ### 2부. 물리적 데이터베이스 설계 안티패턴
 - 10장. 반올림 오류
