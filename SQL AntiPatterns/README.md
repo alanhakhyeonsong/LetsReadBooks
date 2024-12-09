@@ -14,7 +14,7 @@
 - [10장. 반올림 오류](./contents/chapter10.md)
 - [11장. 31가지 맛](./contents/chapter11.md)
 - [12장. 유령 파일](./contents/chapter12.md)
-- 13장. 인덱스 샷건
+- [13장. 인덱스 샷건](./contents/chapter13.md)
 
 ### 3부. 쿼리 안티패턴
 - 14장. 모르는 것에 대한 두려움
