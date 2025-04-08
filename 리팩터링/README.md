@@ -3,7 +3,7 @@
 - [1장. 리팩터링: 첫 번째 예시](./contents/chapter01.md)
 - [2장. 리팩터링 원칙](./contents/chapter02.md)
 - [3장. 코드에서 나는 악취](./contents/chapter03.md)
-- 4장. 테스트 구축하기
+- [4장. 테스트 구축하기](./contents/chapter04.md)
 - [5장. 리팩터링 카탈로그 보는 법](./contents/chapter05.md)
 - 6장. 기본적인 리팩터링
 - 7장. 캡슐화
