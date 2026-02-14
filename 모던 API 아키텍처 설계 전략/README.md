@@ -2,7 +2,7 @@
 ## 목차
 ### 1부 - API 설계부터 구현, 테스트까지
 - [1장. API 설계, 구현, 명세](./contents/chapter01.md)
-- 2장. API 테스트
+- [2장. API 테스트](./contents/chapter02.md)
 
 ### 2부 - API 트래픽 관리
 - 3장. API 게이트웨이: 인그레스 트래픽 관리
