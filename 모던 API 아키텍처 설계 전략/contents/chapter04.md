@@ -66,6 +66,68 @@
 |관측 용이성|손쉬운 컨텍스트 전파와 함께 애플리케이션과 트래픽의 완전한 통찰이 가능|트래픽에 대한 통찰만 가능. 컨텍스트의 전파는 언어 또는 shim의 지원이 필요|트래픽에 대한 통찰만 가능. 컨텍스트의 전파는 언어 또는 shim의 지원이 필요|
 |보안 위협 모델|라이브러리 코드는 애플리케이션의 일부로 실행|사이드카는 보통 애플리케이션과 프로세스 및 네트워크 네임스페이스를 공유|애플리케이션이 시스템 콜을 이용해 OS와 직접 소통|
 
+## 예시
+```bash
+kubectl label namespace default istio-injection=enabled
+```
+
+라우팅 활성화 → Virtual Service 생성
+
+```yaml
+apiVersion: networking.istio.io/v1apha3
+kind: VirtualService
+metadata:
+  name: sessions
+spec:
+  hosts:
+  - sessions
+  http:
+  - route:
+    - destination:
+        host: sessions
+        subnet: v1
+---
+apiVersion: networking.istio.io/v1apha3
+kind: VirtualService
+metadata:
+  name: attendees
+spec:
+  hosts:
+  - attendees
+  http:
+  - route:
+    - destination:
+        host: attendees
+        subnet: v1
+```
+
+```yaml
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: sessions
+spec:
+  host: sessions
+  subnets:
+  - name: v1
+    labels:
+      version: v1
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: DestinationRule
+metadata:
+  name: attendees
+spec:
+  host: attendees
+  subnets:
+  - name: v1
+    labels:
+      version: v1
+  - name: v2
+    labels:
+      version: v2
+```
+
 ## 서비스 메시의 배포: 장애의 이해와 관리
 - 서비스 메시는 단일 실패 지점이다.
   - 당연하겠지만 서비스 메시의 기능에 더 의존할수록 더 큰 위험을 수반하며 장애의 영향도 커질 수밖에 없다.
