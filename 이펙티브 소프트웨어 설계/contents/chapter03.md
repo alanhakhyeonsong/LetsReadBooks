@@ -191,10 +191,96 @@ try {
 - 메서드마다 타입을 하나만 반환한다는 제약을 극복하기 위해 예외를 사용하려는 경우
   - 호출자가 메서드의 결과에 따라 다른 코드 경로를 수행하기 위해 분기 로직을 구축할 때 문제.
 
-## 타사 라이브러리에서 오는 예외
 ## 멀티스레드 환경에서 주의할 예외
 ## Try로 오류를 처리하는 함수형 접근 방식
-## 예외 처리 코드의 성능 비교
+메서드가 예외를 던진다는 것은 부작용이 생김을 의미한다. 호출자는 실제 반환된 값을 처리해야 하지만, 예외를 방어할 필요도 있다.  
+예외가 명시적으로 메서드의 계약에 언급될 때 함수형 코드는 무슨 일이 일어날지 알고 `Try` 내부에서 이를 감싸는 방법으로 이 부작용을 방어할 수 있다.
+
+던져진 예외가 확인되지 않은 것이고 메서드의 계약에 선언되지 않을 때 호출자는 이를 처리하지 않을 수 있으며, 부작용은 호출 스택에 전파될 것이다. 이런 미처리는 호출자가 예외를 예상하지 못하고 그 결과 이를 방어하지 않았기 때문에 생기기도 한다. 이런 동작 방식은 함수형 프로그래밍 세계에서 문제가 된다.
+
+- 함수형 프로그래밍에서의 핵심 철학 : **타입으로 함수 호출의 가능한 모든 결과를 모델링하는 것**
+  - 함수형 프로그래밍에서 오류 처리를 모델링할 때 `Try` 모나드(`Error` 모나드)가 중요한 이유
+- `Try`는 두 가지 상태를 실어나를 수 있다.
+  - 성공
+  - 실패
+- 프라미스 타입은 비동기식 처리 과정의 컨텍스트에서만 사용돼야 하지만, `Try` 모나드는 동기식, 비동기식 컨텍스트 모두에서 처리 상태를 캡슐화할 수 있다.
+
+```java
+// Try 모나드 - 성공 케이스
+// given
+String defaultResult = "default";
+Supplier<Integer> clientAction = () -> 100;
+
+// when
+Try<Integer> response = Try.ofSupplier(clientAction);
+String result = response.map(Object::toString).getOrElse(defaultResult);
+
+// then
+assertTrue(response.isSuccess());
+response.onSuccess(r -> assertThat(r).isEqualTo(100));
+assertThat(result).isEqualTo("100");
+
+// Try 모나드 - 실패 케이스
+Supplier<Integer> clientAction =
+    () -> {
+      throw new RuntimeException("problem");
+    };
+
+// when
+Try<Integer> response = Try.ofSupplier(clientAction);
+String result = response.map(Object::toString).getOrElse(defaultResult);
+Option<Integer> optionalResponse = response.toOption();
+
+// then
+assertTrue(optionalResponse.isEmpty());
+assertTrue(response.isFailure());
+assertThat(result).isEqualTo(defaultResult);
+response.onSuccess(r -> System.out.println(r));
+response.onFailure(ex -> assertTrue(ex instanceof RuntimeException));
+```
+
+- `Try` 모나드의 가장 큰 장점은 표준 `try-catch` 블록에서 예외를 처리할 필요가 없다는 사실이다.
+  - 예외 처리 코드는 비즈니스 로직을 오염시키지 않는다.
+
+```java
+// Try를 사용한 HTTP 서비스 호출
+private static final Logger logger = LoggerFactory.getLogger(HttpCallTry.class);
+
+public String getId() {
+  ClosableHttpClient client = HttpClients.createDefault();
+  HttpGet httpGet = new HttpGet("http:/ /external-service/resource");
+  Try<HttpResponse> response = Try.of(() -> client.execute(httpGet)); // 외부 호출을 Try 모나드로 감싼다
+  return response
+    .mapTry(this::extractStringBody) // extractStringBody()가 예외를 던지므로 mapTry()를 사용
+    .mapTry(this::toEntity)
+    .map(this::extractUserId) // 처리 과정의 마지막 단계에서 ID 추출
+    .onFailure(ex -> logger.error("The getId() failed.", ex)) // 문제가 발생할 경우 예외를 로그에 쌓는다
+    .getOrElse("DEFAULT_ID"); // 처리 과정의 특정 구간에서 실패할 경우 기본값을 반환
+}
+
+private String extractUserId(EntityObject entityObject) {
+  return entityObject.id;
+}
+
+private String extractStringBody(HttpResponse r) throws IOException {
+  return new BufferedReader(new InputStreamReader(r.getEntity().getContent(), StandardCharsets.UTF_8))
+    .lines()
+    .collect(Collectors.joining("\n"));
+}
+
+private EntityObject toEntity(String content) throws JsonProcessingException {
+  return OBJECT_MAPPER.readValue(content, EntityObject.class);
+}
+
+static class EntityObject {
+  String id;
+
+  public EntityObject(String id) {
+    this.id = id;
+  }
+}
+```
+
 ## 요약
 - 여러 객체지향 언어에는 예외와 오류의 계층이 존재한다. 진단 목적으로 예외 계층을 확실하게 이해해야 한다.
 - 오류 처리 API를 설계하기 위해 확인된 예외와 확인되지 않은 예외를 선택할 수 있다. 확인된 예외는 이런 API에서 명시적인 부분이며 반드시 처리돼야 하며, 확인되지 않은 예외는 오류 처리 코드에서 암시적인 부분이며 처리될 필요가 없다.
