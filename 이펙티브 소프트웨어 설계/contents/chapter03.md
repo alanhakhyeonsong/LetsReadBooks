@@ -192,6 +192,149 @@ try {
   - 호출자가 메서드의 결과에 따라 다른 코드 경로를 수행하기 위해 분기 로직을 구축할 때 문제.
 
 ## 멀티스레드 환경에서 주의할 예외
+멀티스레드 컨텍스트에서 예외를 처리하는 방법은 단일 스레드 컨텍스트에서 프로그램이 수행될 때와는 다르다. 새로운 행위를 `Executors`에 제출할 때 이 행위의 성공이나 실패에 대한 피드백을 받아야 한다. 정보를 얻는 메커니즘이 없다면 독립된 스레드에서 수행되는 비동기식 행위가 어떤 힌트도 주지 않은 채로 실패할 수 있다는 위험에 직면한다.
+
+`Executors`와 상호작용할 때 비동기식 연산을 스케줄링 하는 두 가지 작업 제출 방식
+- `Future` 인스턴스를 반환하며 나중에 이 인스턴스를 사용해 행위의 결과를 얻을 수 있는 `submit()` 메서드를 사용해 수행될 새로운 행위를 스케줄링
+- `execute()` 메서드를 사용.
+  - 기본적으로 발사 후 망각 접근 방식을 따르는데, 이런 행위로부터 결과를 얻지 않을 것임을 의미함.
+
+```java
+// 제출 후 대기
+ExecutorService executorService = Executors.newSingleThreadExecutor(); // 독립적인 워커 스레드 하나로 Executors 실행
+Runnable r = () -> {
+  throw new RuntimeException("problem"); // 제출되는 행위는 확인되지 않은 예외를 던질 것이다.
+};
+
+Future<?> submit = executorService.submit(r); // Future 반환
+assertThatThrownBy(submit::get)
+  .hasRootCauseExactlyInstanceOf(RuntimeException.class)
+  .hasMessageContaining("problem");
+```
+
+- `get()` 메서드가 우리의 흐름을 차단하고, 차단 연산은 `get()`이 수행될 때 완료돼야 한다.
+- 기반 행위가 예외로 끝나면 main 스레드로 전파될 것이다.
+- 행위를 제출하고 이 결과를 코드 어디서든 사용하지 않는다면 예외는 전파되지 않으며 무언의 실패에 대한 위험을 감수해야 한다.
+- `Executors` 서비스가 `Future`를 반환할 경우 정확성을 직접 검증해야 한다.
+
+```java
+// 수행 후 망각
+Runnable r = () -> {
+  throw new RuntimeException("problem");
+};
+executorService.execute(r);
+```
+
+- 위 코드 예시처럼 결과를 반환하지 않는다는 사실은 분리된 스레드에서 수행된 비동기식 행위의 실패가 조용하게 넘어갈 수 있음을 의미한다.
+- 고정된 스레드 수로 만들어진 스레드 풀을 사용한다면 이는 문제가 될 수도 있다.
+  - 스레드가 실패했을 때 다시 생성되지 않을 수 있으며, 어느 시점에서 모든 스레드가 실패하는 바람에 스레드 풀이 텅 비게 될 위험도 있다.
+  - 트래픽에 따라 변하는 스레드 풀을 사용하는 경우라면 자원 누수라는 위험에 직면할 수도 있다.
+  - 모든 스레드가 상당한 메모리를 차지하며 새로운 스레드 생성은 메모리 부족 문제를 일으킬 수 있다.
+
+이런 처리 과정을 위한 합리적인 해법은 처리 과정에서 스레드 중 하나에 발생한 실패를 처리하는 전역 예외 처리기를 등록하는 것이다. [`UncaughtExceptionHandler`](https://docs.oracle.com/en/java/javase/16/docs/api/java.base/java/lang/Thread.UncaughtExceptionHandler.html)를 사용해 모든 스레드를 위한 예외 처리기를 등록할 수 있다.
+
+<img width="591" height="252" alt="Image" src="https://github.com/user-attachments/assets/4e8836d1-3090-4205-ba23-75e9a8328171" />
+
+전역 예외 처리기 로직을 검증하는 단위 테스트를 살펴보자.
+
+```java
+// given
+AtomicBoolean uncaughtExceptionHandlerCalled = new AtomicBoolean(); // 처리기가 실행되면 true로 설정됨.
+ThreadFactory factory =
+ r -> {
+  final Thread thread = new Thread(r);
+  thread.setUncaughtExceptionHandler( // 전역 예외 처리기 설정
+    (t, e) -> {
+      uncaughtExceptionHandlerCalled.set(true); // 예외 발생 시 true로 설정
+      logger.error("Exception in thread: " + t, e);
+    });
+  return thread;
+};
+
+Runnable task =
+  () -> {
+    throw new RuntimeException("problem");
+  };
+ExecutorService pool = Executors.newSingleThreadExecutor(factory);
+
+// when
+pool.execute(task); // execute()는 독립적인 워커 스레드에서 행위를 호출.
+await().atMost(5, TimeUnit.SECONDS).until(uncaughtExceptionHandlerCalled::get); // 처리기가 호출될 때까지 기다릴 시간을 설정한다.(모든 것이 비동기 식으로 동작)
+```
+
+멀티스레드 환경에서의 예외 처리는 생각보다 어렵다. API가 비동기식으로 몇 가지 행위를 처리하고 결과를 잊어버리게 허용하거나 강제할 경우 특히 더 그렇다. 하지만 비동기식 수행 결과를 감싸는 `Future` 객체를 얻을 수 있다면 결과와 예외 가능성에 대해 반드시 생각하게 만들기 때문에 이 API를 사용해야만 한다.
+
+자바는 `CompletableFuture`를 제공한다.
+
+### 프라미스 API를 사용한 비동기식 작업 흐름의 예외 처리
+이상적으로는 비동기식 작업 흐름을 만들 때 비동기적인 방식으로 동작하는 API를 사용해 I/O, 네트워크, 기타 외부 자원과 상호작용을 수행한다. 이런 API는 비동기식 연산을 차례로 연결하기 위해 사용할 수 있는 프라미스를 반환해야 한다. 불행히도 현실 세계에서는 종종 동기식 API와 비동기식 API 사이에 존재하는 변환 계층을 생성할 필요가 있다.
+
+외부 서비스를 호출할 필요가 있다고 가정하자.
+- 외부 서비스를 호출할 책임을 맡은 메서드는 동기식으로 동작하므로 이후 비동기식 흐름으로 변경하게 허용하도록 이 메서드를 `CompletableFuture` API로 감싸야 한다.
+- 외부 호출은 I/O 연산을 수반하므로 `IOException`을 던질 수 있게 선언한다.
+
+```java
+// 비동기식 API에서 예외 감싸기
+public int externalCall() throws IOException {
+  throw new IOException("Problem when calling an external service"); // 실패를 시뮬레이션하기 위해 새로운 IOException을 던진다.
+}
+
+public CompletableFuture<Integer> asyncExternalCall() {
+  return CompletableFuture.supplyAsync( // 동기식 호출을 CompletableFuture로 감싼다.
+    () -> {
+      try {
+        return externalCall();
+      } catch (IOException e) {
+        throw new RuntimeException(e); // IOException을 확인되지 않은 예외로 감싼다.
+      }
+    }
+  )
+}
+```
+
+두 가지 추상화 개념을 혼합.
+- 프라미스 API로서 미래에 이행될 결과나 이 행위가 실패할 경우 예외를 감싼다.
+- 호출자에게 전파될 예외를 동기적으로 던진다.
+
+`asyncExternalCall()` 메서드를 호출할 때 concurrent API의 다중 계층으로 이 예외게 전파되었다는 사실을 나타내는 스택 트레이스를 보게 될 것이다. 그리고 마지막으로 오류를 일으킨 근본 원인을 찾게 될 것이다.
+
+```
+java.util.concurrent.CompletionException: java.lang.RuntimeException: java.io.IOException: Problem when calling an external service
+    at java.base/java.util.concurrent.CompletableFuture.encodeThrowable(CompletableFuture.java:315)
+    at java.base/java.util.concurrent.CompletableFuture.completeThrowable(CompletableFuture.java:320)
+    at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1770)
+    at java.base/java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1144)
+    at java.base/java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:642)
+    at java.base/java.lang.Thread.run(Thread.java:1583)
+Caused by: java.lang.RuntimeException: java.io.IOException: Problem when calling an external service
+    at YourClassName.lambda$asyncExternalCall$0(YourClassName.java:12)  <-- throw new RuntimeException(e) 지점
+    at java.base/java.util.concurrent.CompletableFuture$AsyncSupply.run(CompletableFuture.java:1768)
+    ... 3 more
+Caused by: java.io.IOException: Problem when calling an external service
+    at YourClassName.externalCall(YourClassName.java:3)                <-- 실제 throw new IOException 지점
+    at YourClassName.lambda$asyncExternalCall$0(YourClassName.java:10)
+    ... 4 more
+```
+
+이런 스택 트레이스는 병행 라이브러리에서 이를 처리하기 위해 많은 중간 단계가 개입되었기에 실패를 올바르게 처리하지 못했음을 보여준다. 프로그래밍 언어나 라이브러리에 따라 이런 예외가 전파되지 못하기에 스택 덤프를 목격하는 행운이 없거나 스레드를 죽이는 바람에 자원 누수로 이어질 수도 있다.
+
+이 문제를 해결하기 위해 결과나 예외를 반환하는 `CompletableFuture`라는 새로운 인스턴스를 생성해야 한다. 여기서 예외 처리가 중요하다.
+
+```java
+CompletableFuture<Integer> result = new CompletableFuture<>(); // 아직 이행되지 않은 새로운 CompletableFuture
+CompletableFuture.runAsync(
+  () -> {
+    try {
+      result.complete(externalCall()); // 외부 호출이 성공했고 프라미스를 완료한다.
+    } catch (IOException e) {
+      result.completableExceptionally(e); // 예외가 발생하면 이를 프라미스로 감싼다.
+    }
+  });
+return result; // 값이나 예외로 이행된 결과를 반환
+```
+
+위에서 설명한 메서드의 호출자는 값이나 예외를 프라미스 API로 감싸는 식으로 실제 근본 원인을 얻는다. 여기서 병행 라이브러리와 관련된 스택 추적이 보이지 않는 이유는 예외를 다시 던지지 않았기 때문이다. 덕분에 이 예외가 스레드를 죽이거나 목격되지 않고 넘어가는 위험을 피한다.
+
 ## Try로 오류를 처리하는 함수형 접근 방식
 메서드가 예외를 던진다는 것은 부작용이 생김을 의미한다. 호출자는 실제 반환된 값을 처리해야 하지만, 예외를 방어할 필요도 있다.  
 예외가 명시적으로 메서드의 계약에 언급될 때 함수형 코드는 무슨 일이 일어날지 알고 `Try` 내부에서 이를 감싸는 방법으로 이 부작용을 방어할 수 있다.
