@@ -5,7 +5,7 @@
 - [아이템 2. 변수의 스코프를 최소화하라](./contents/chapter01/item02.md)
 - [아이템 3. 최대한 플랫폼 타입을 사용하지 말라](./contents/chapter01/item03.md)
 - [아이템 4. inferred 타입으로 리턴하지 말라](./contents/chapter01/item04.md)
-- 아이템 5. 예외를 활용해 코드에 제한을 걸어라
+- [아이템 5. 예외를 활용해 코드에 제한을 걸어라](./contents/chapter01/item05.md)
 - 아이템 6. 사용자 정의 오류보다는 표준 오류를 사용하라
 - 아이템 7. 결과 부족이 발생할 경우 null과 Failure를 사용하라
 - 아이템 8. 적절하게 null을 처리하라
