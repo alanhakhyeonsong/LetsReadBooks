@@ -14,7 +14,7 @@
 ## Vol.2 스프링의 기술과 선택
 - [1장. IoC 컨테이너와 DI](./vol2/chapter01.md)
 - [2장. 데이터 액세스 기술](./vol2/chapter02.md)
-- 3장. 스프링 웹 기술과 스프링 MVC
+- [3장. 스프링 웹 기술과 스프링 MVC](./vol2/chapter03.md)
 - 4장. 스프링 @MVC
 - 5장. AOP와 LTW
 - [6장. 테스트 컨텍스트 프레임워크](./vol2/chapter06.md)
