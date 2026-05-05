@@ -347,3 +347,334 @@ public interface MemberDao {
 #### AOP 방식: 프록시와 AspectJ
 **스프링의 AOP는 기본적으로 프록시 방식이다.** JDK 다이내믹 프록시든 CGLib이든 모두 프록시 오브젝트를 타깃 오브젝트 앞에 두고 호출 과정을 가로채 트랜잭션과 같은 부가적인 작업을 진행해준다.
 
+스프링의 프록시 AOP 대신 AOP 전용 프레임워크인 **AspectJ의 AOP**를 사용할 수도 있다. AspectJ AOP는 프록시를 타깃 앞에 두지 않고 **타깃 오브젝트의 클래스 바이트코드를 직접 조작해서 부가기능을 직접 넣는 방식**이다. 그래서 매우 강력하다. 프록시 방식에선 불가능한 다양한 조인 포인트와 고급 기능을 이용할 수 있다. 대신 별도의 빌드 과정이나 바이트코드 조작을 위한 **로드타임 위버 설정**과 같은 부가적인 작업이 필요하다.
+
+트랜잭션 AOP만을 위해 굳이 번거롭게 AspectJ를 사용할 필요는 없다. 다만 다음과 같은 **프록시 AOP의 제약사항을 극복하기 위해서**라면 도입을 검토해볼 만하다.
+
+##### 프록시 방식의 한계: 타깃 오브젝트의 자기 호출
+프록시는 **클라이언트가 타깃 오브젝트를 호출하는 과정에서만 동작한다.** 타깃 오브젝트 안에서 자기 자신의 다른 메소드를 호출할 때는 프록시를 거치지 않는다.
+
+```java
+@Transactional
+public class MemberService {
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void add(Member m) { ... }
+
+    public void complexWork() {
+        // ...
+        this.add(new Member(...)); // 프록시 거치지 않음 → REQUIRES_NEW 적용 안 됨
+    }
+}
+```
+
+`complexWork()`가 호출되면 프록시에서 트랜잭션이 시작된 뒤 타깃 메소드가 실행된다. 그 후 `complexWork()` 안에서 `add()`를 호출하면 **프록시를 거치지 않으므로** `add()`에 설정된 `REQUIRES_NEW` 속성이 무시되고 기존 트랜잭션에 그대로 참여하게 된다. **타깃 오브젝트의 자기 호출에는 AOP가 적용되지 않는다는 점이 프록시 AOP의 한계다.**
+
+이 문제를 해결하는 두 가지 방법:
+
+- **`AopContext.currentProxy()`**
+  - 스프링 API로 현재 진행 중인 프록시를 가져와 호출하는 방식이다.
+  - 단순하지만 **POJO 비즈니스 로직 코드에 스프링 API가 등장한다는 문제**가 있고, 프록시를 통하지 않을 땐 아예 동작하지 않는 코드가 되므로 권장되진 않는다.
+- **AspectJ AOP**
+  - 프록시 대신 클래스 바이트코드를 직접 변경해 부가기능을 추가하므로 **자기 호출에도 트랜잭션 부가기능이 잘 적용된다.**
+  - 자세한 설정 방법은 5장 참고.
+  - `@Transactional`을 사용할 땐 XML에 `<tx:annotation-driven mode="aspectj"/>`로 변경해주면 된다.
+  - AspectJ 모드에선 인터페이스에만 `@Transactional`을 부여하면 적용되지 않는다. **트랜잭션 모드가 변경될 수 있다는 점을 고려한다면 `@Transactional`은 안전하게 클래스에만 붙여두는 게 좋다.** 단, 인터페이스를 통한 접근 원칙은 그대로 지켜야 한다.
+
+### 트랜잭션 속성
+모든 트랜잭션이 같은 방식으로 동작하는 건 아니다. 스프링은 트랜잭션 경계를 설정할 때 **네 가지 트랜잭션 속성**을 지정할 수 있다. 또 선언적 트랜잭션에선 롤백/커밋 기준을 변경하기 위해 두 가지 추가 속성을 지정할 수 있다. 결국 **선언적 트랜잭션 경계는 여섯 가지 속성**을 갖는 셈이다.
+
+- `<tx:method>`의 애트리뷰트로 지정 (tx/aop 스키마)
+- `@Transactional`의 엘리먼트로 지정
+
+```java
+@Transactional(readOnly=...,
+               isolation=...,
+               propagation=...,
+               timeout=...,
+               rollbackFor=..., rollbackForClassName=...,
+               noRollbackFor=..., noRollbackForClassName=...)
+```
+
+모든 엘리먼트는 디폴트 값이 정의돼 있으므로 생략 가능하다.
+
+#### 트랜잭션 전파: propagation
+트랜잭션 경계에서 **새로 시작할지, 기존 트랜잭션에 참여할지를 결정하는 속성**이다. 선언적 트랜잭션의 장점은 여러 트랜잭션 적용 범위를 하나로 묶어서 커다란 경계로 만들 수 있다는 점이다.
+
+> ⚠️ 모든 전파 속성이 모든 종류의 트랜잭션 매니저와 데이터 액세스 기술에서 지원되지는 않으므로, 사용 전 각 트랜잭션 매니저의 API 문서를 확인하자.
+
+- **`REQUIRED` (디폴트)**
+  - 모든 트랜잭션 매니저가 지원한다. 대개 이 속성으로 충분하다.
+  - 미리 시작된 트랜잭션이 있으면 참여하고 없으면 새로 시작한다.
+  - 하나의 트랜잭션에 여러 메소드/오브젝트를 자연스럽게 묶을 수 있다.
+- **`SUPPORTS`**
+  - 진행 중인 트랜잭션이 있으면 참여, 없으면 트랜잭션 없이 진행한다.
+  - 트랜잭션이 없어도 해당 경계 안에서 `Connection`이나 하이버네이트 `Session` 등을 공유할 수 있다.
+- **`MANDATORY`**
+  - 진행 중인 트랜잭션이 있으면 참여한다. 반면 트랜잭션이 없으면 새로 시작하지 않고 **예외를 발생**시킨다.
+  - 혼자서는 독립적으로 트랜잭션을 진행하면 안 되는 경우 사용한다.
+- **`REQUIRES_NEW`**
+  - 항상 새로운 트랜잭션을 시작한다. 진행 중 트랜잭션이 있으면 잠시 보류시킨다.
+  - JTA 트랜잭션 매니저를 사용한다면 서버의 트랜잭션 매니저에 트랜잭션 보류가 가능하도록 설정돼 있어야 한다.
+- **`NOT_SUPPORTED`**
+  - 트랜잭션을 사용하지 않게 한다. 진행 중이면 보류시킨다.
+- **`NEVER`**
+  - 트랜잭션을 사용하지 않도록 강제한다. 이미 진행 중인 트랜잭션도 존재하면 안 된다. 있다면 예외를 발생시킨다.
+- **`NESTED`**
+  - 진행 중인 트랜잭션이 있으면 **중첩 트랜잭션**을 시작한다. `REQUIRES_NEW`와 다르게 독립적인 트랜잭션이 아니다.
+  - 중첩 트랜잭션은 **부모 트랜잭션의 커밋과 롤백엔 영향을 받지만, 자신의 커밋과 롤백은 부모에 영향을 주지 않는다.**
+  - 예를 들어 메인 작업 중 일부 보조 작업(로그 저장 등)이 실패해도 메인 트랜잭션을 롤백하면 안 되는 경우, 보조 작업을 중첩 트랜잭션으로 만들어 둘 수 있다. 메인이 롤백되면 중첩도 같이 롤백되지만, 중첩만 롤백돼도 메인은 정상적으로 커밋된다.
+  - JDBC 3.0 스펙의 **저장포인트(savepoint)**를 지원하는 드라이버와 `DataSourceTransactionManager`가 필요하다. 일부 WAS의 JTA 트랜잭션 매니저에서도 적용 가능하다.
+
+#### 트랜잭션 격리수준: isolation
+동시에 여러 트랜잭션이 진행될 때 **트랜잭션의 작업 결과를 다른 트랜잭션에게 어떻게 노출할 것인지를 결정하는 기준**이다. 스프링은 다섯 가지 격리수준 속성을 지원한다.
+
+- **`DEFAULT`**: 사용하는 데이터 액세스 기술이나 DB 드라이버의 디폴트 설정을 따른다. 보통 `READ_COMMITTED`. 일부 DB는 디폴트가 다르므로 확인 필요.
+- **`READ_UNCOMMITTED`**: 가장 낮은 격리수준. 다른 트랜잭션이 커밋되기 전 변화도 그대로 노출된다. 일관성은 떨어지지만 가장 빠르다. 데이터의 일관성이 조금 떨어지더라도 성능을 극대화할 때 의도적으로 사용.
+- **`READ_COMMITTED`**: 실무에서 가장 많이 사용. 다른 트랜잭션이 커밋하지 않은 정보는 읽을 수 없다. 단, 한 트랜잭션이 같은 로우를 다시 읽을 때 다른 내용이 발견될 수 있다.
+- **`REPEATABLE_READ`**: 한 트랜잭션이 읽은 로우를 다른 트랜잭션이 수정하는 것을 막아준다. 단, **새 로우 추가는 막지 않으므로** SELECT 조건에 맞는 로우 추가가 발견될 수 있다(팬텀 리드).
+- **`SERIALIZABLE`**: 가장 강력. 동시에 같은 테이블 정보를 액세스하지 못하도록 트랜잭션을 순차적으로 진행시킨다. 안전하지만 성능 저하가 크다. 극단적으로 안전한 작업이 필요한 경우가 아니라면 자주 사용되지 않는다.
+
+#### 트랜잭션 제한시간: timeout
+트랜잭션에 제한시간을 초 단위로 지정할 수 있다. 디폴트는 트랜잭션 시스템의 제한시간을 따른다. **일부 트랜잭션 매니저는 이 기능을 지원하지 않으므로** 무시되거나 예외를 발생시킬 수도 있다.
+
+#### 읽기전용 트랜잭션: read-only, readOnly
+트랜잭션을 읽기전용으로 설정해 **성능을 최적화**하거나 트랜잭션 안에서 의도하지 않은 쓰기 작업을 차단할 수 있다. 일부 트랜잭션 매니저는 읽기전용 속성을 무시하고 쓰기 작업을 허용할 수 있으므로 주의해야 한다.
+
+> 메소드 이름 패턴(`get*`, `find*` 등)을 활용해 일괄 적용하는 것이 편리하다. `@Transactional`을 사용할 땐 메소드마다 일일이 `readOnly = true`를 지정해줘야 한다.
+
+#### 트랜잭션 롤백 예외: rollback-for, rollbackFor, rollbackForClassName
+**선언적 트랜잭션은 런타임 예외가 발생하면 롤백한다.** 체크 예외는 비즈니스적 의미를 담은 리턴 값으로 사용되는 경우가 많아 기본 동작은 **커밋 대상**이다.
+
+기본 동작을 바꾸고 싶다면 `rollback-for`/`rollbackFor`로 롤백할 예외를 지정하면 된다.
+
+```xml
+<tx:method name="get*" read-only="true" rollback-for="NoSuchMemberException"/>
+```
+
+```java
+@Transactional(readOnly=true, rollbackFor=NoSuchMemberException.class)
+```
+
+#### 트랜잭션 커밋 예외: no-rollback-for, noRollbackFor, noRollbackForClassName
+`rollback-for`의 반대다. **기본적으로는 롤백 대상인 런타임 예외를 커밋 대상으로 지정**해준다. 사용 방법은 동일하다.
+
+#### 일괄 적용 vs 세밀 조정
+- 메소드 이름 패턴으로 한 번에 지정하기 → **aop/tx 스키마 태그**가 편리. 보통 `read-only` 정도만 디폴트와 다르게 사용하는 경우가 많다.
+- 세밀하게 튜닝해야 한다면 → **`@Transactional`**이 편리.
+  - 단점은 트랜잭션 속성이 전체적으로 어떻게 지정돼 있는지 한눈에 보기 힘들고, 개발자가 코드를 만들 때 트랜잭션 속성을 잘못 지정할 위험이 있다는 점.
+  - 사전에 **트랜잭션 속성 지정에 관한 정책이나 가이드라인**을 만들어둬야 한다.
+
+### 데이터 액세스 기술 트랜잭션의 통합
+스프링은 자바의 다양한 데이터 액세스 기술을 위한 트랜잭션 매니저를 제공한다. 트랜잭션 매니저 빈의 이름은 관례적으로 **`transactionManager`**를 사용한다. 여러 개의 DB를 독립적으로 사용하지 않는 한 트랜잭션 매니저는 한 개만 사용한다.
+
+스프링은 **두 가지 이상의 데이터 액세스 기술로 만든 DAO를 하나의 트랜잭션으로 묶어서 사용하는 방법**을 제공한다. 단, DB당 트랜잭션 매니저는 하나만 사용하는 원칙은 바뀌지 않는다. 대신 **하나의 트랜잭션 매니저가 여러 데이터 액세스 기술의 트랜잭션 기능을 지원하도록** 만드는 것이다.
+
+#### 트랜잭션 매니저별 조합 가능 기술
+- **`DataSourceTransactionManager`**
+  - `JDBC`와 `iBatis` 두 가지 기술을 함께 사용할 수 있다.
+  - 트랜잭션을 통합하려면 **항상 동일한 `DataSource`를 사용해야 한다.**
+  - JDBC DAO와 iBatis DAO가 같은 `DataSource`를 사용하면, `DataSource`로부터 `Connection`을 가져와 같은 `DataSource`를 사용하는 두 DAO 작업에 트랜잭션 동기화 기능을 제공해준다.
+- **`JpaTransactionManager`**
+  - JPA의 `EntityManagerFactory`가 스프링 빈으로 등록된 `DataSource`를 사용할 수 있다.
+  - 그 `DataSource`를 JDBC DAO나 iBatis DAO에서도 공유하게 해주면 **JPA + JDBC + iBatis 세 가지 기술의 DAO 작업을 하나의 트랜잭션으로 관리**할 수 있다.
+  - `EntityManagerFactory`가 사용하는 `DataSource`를 통해 동기화한다.
+- **`HibernateTransactionManager`**
+  - 하이버네이트 DAO + JDBC DAO + iBatis DAO 세 가지 기술의 DAO를 통합 사용할 수 있다.
+  - `SessionFactory`와 같은 `DataSource`를 공유하는 JDBC, iBatis DAO와 트랜잭션을 공유한다.
+- **`JtaTransactionManager`**
+  - 서버가 제공하는 트랜잭션 서비스를 JTA를 통해 이용하면 **모든 종류의 데이터 액세스 기술의 DAO**를 같은 트랜잭션 안에서 동작하게 만들 수 있다.
+  - 같은 DB뿐만 아니라 **다른 DB를 사용하는 DAO도 하나의 트랜잭션**으로 묶을 수 있다.
+  - 가장 강력하고 편리하지만 JTA 서버환경 구성, XA를 지원하는 특별한 `DataSource` 구성 등 부가적인 준비 작업이 필요하다.
+
+#### ORM과 비 ORM DAO를 함께 사용할 때의 주의사항
+JPA/하이버네이트 같은 ORM 기술과 JDBC/iBatis 같은 비 ORM 기술을 함께 사용하다 보면 **각 기술의 특징을 이해하지 않으면 예상치 못한 오류**를 만날 수 있다.
+
+- JPA/하이버네이트는 새로 등록된 오브젝트에 영속성을 부여해 `persist()`/`save()`를 호출해도 **바로 DB에 INSERT가 전달되지 않는다.** 일단 엔티티 매니저나 세션에만 저장해둔다(1차 캐시).
+- 캐시를 한다는 의미는 DB에 INSERT하는 것을 최대한 지연시킨다는 뜻이다.
+- 반면 JDBC/iBatis는 직접 DB에 조회용 SQL을 보내 현재 테이블에 등록된 로우 개수를 가져온다. 그래서 **JPA의 캐시에만 있고 DB엔 반영되지 않은 등록 결과는 JDBC에선 보이지 않는다.**
+
+해결 방법:
+
+- 가장 단순한 해결책은 JPA 저장/수정 작업 후 **`EntityManager.flush()` / `Session.flush()`**로 강제로 캐시 내용을 DB에 보내주는 것이다. 다만 1차 캐시의 장점을 희생하고 코드가 지저분해진다.
+- 다른 접근은 **JDBC DAO 호출 시 자동으로 JPA/하이버네이트 캐시를 flush()해주는 부가기능을 AOP로 추가**하는 방법이다. 이렇게 하면 JDBC DAO를 사용하지 않을 때는 JPA 캐시를 효과적으로 활용하고, 함께 사용할 때도 데이터의 정확성을 보장할 수 있다.
+
+### JTA를 이용한 글로벌/분산 트랜잭션
+**한 개 이상의 DB나 JMS의 작업을 하나의 트랜잭션 안에서 동작**하게 하려면 서버가 제공하는 트랜잭션 매니저를 **JTA**를 통해 사용해야 한다. 스프링에선 서버에 설정해둔 XA `DataSource`와 트랜잭션 매니저, `UserTransaction` 등을 JNDI를 통해 가져와 사용할 수 있다. JTA와 분산/글로벌 트랜잭션을 사용하기 위한 설정은 자바 서버마다 다르므로 서버 매뉴얼을 참고하자.
+
+```xml
+<jee:jndi-lookup id="dataSource1" jndi-name="jdbc/xaDS1"/>
+<bean id="memberDao" class="...MemberDao">
+    <property name="dataSource" ref="dataSource1"/>
+</bean>
+
+<jee:jndi-lookup id="dataSource2" jndi-name="jdbc/xaDS2"/>
+<bean id="usageDao" class="...UsageDao">
+    <property name="dataSource" ref="dataSource2"/>
+</bean>
+
+<bean id="txManager"
+      class="org.springframework.transaction.jta.JtaTransactionManager"/>
+```
+
+`JtaTransactionManager`는 다른 트랜잭션 매니저와 달리 프로퍼티로 `DataSource`나 `SessionFactory` 같은 빈을 참조하지 않는다. 대신 서버에 등록된 트랜잭션 매니저를 가져와 JTA로 트랜잭션을 관리해줄 뿐이다.
+
+`JtaTransactionManager`는 JNDI를 통해 JTA `TransactionManager`와 JTA `UserTransaction`을 찾아온다. 기본 이름이 아닌 JNDI 이름을 사용한다면 `transactionManagerName`과 `userTransactionName` 프로퍼티로 지정해야 한다.
+
+#### 독립형 JTA 트랜잭션 매니저
+JTA는 보통 WAS가 제공하는 서비스를 이용하지만, **WAS의 지원 없이도 애플리케이션 안에 JTA 서비스 기능을 내장하는 독립형 JTA 방식**으로 이용할 수도 있다. 톰캣과 같은 서블릿 컨테이너에서도 JTA 다중 트랜잭션 리소스를 위한 글로벌 트랜잭션 기능을 활용할 수 있다.
+
+대표적인 독립형 JTA 트랜잭션 매니저:
+
+- **JOTM** (ObjectWeb의 JTA 엔진)
+- **Atomikos `TransactionalEssentials`** — 오픈소스
+- **Atomikos `ExtremeTransactions`** — 상용 (고급 기능 포함)
+
+이들은 모두 스프링의 `JtaTransactionManager`와 결합해서 JTA 트랜잭션 서비스로 사용할 수 있다.
+
+```xml
+<bean id="atomikosTransactionManager"
+      class="com.atomikos.icatch.jta.UserTransactionManager"
+      init-method="init" destroy-method="close">
+    <property name="forceShutdown"><value>true</value></property>
+</bean>
+
+<bean id="atomikosUserTransaction"
+      class="com.atomikos.icatch.jta.UserTransactionImp">
+    <property name="transactionTimeout"><value>300</value></property>
+</bean>
+
+<bean id="transactionManager"
+      class="org.springframework.transaction.jta.JtaTransactionManager">
+    <property name="transactionManager" ref="atomikosTransactionManager"/>
+    <property name="userTransaction" ref="atomikosUserTransaction"/>
+</bean>
+```
+
+XA를 지원하는 `DataSource`를 등록할 땐 `XADataSource`를 사용해야 한다(예: MySQL의 `MysqlXADataSource`). Atomikos는 XA 지원 드라이버는 그대로 사용하고, 지원하지 않는 드라이버는 Atomikos의 도움을 통해 XA 드라이버처럼 사용하게 만들 수도 있다.
+
+#### WAS 트랜잭션 매니저의 고급 기능 사용하기
+스프링의 `JtaTransactionManager`는 JTA 표준 스펙을 따르는 API를 사용해 트랜잭션을 관리한다. 그런데 WebLogic, OC4J, WebSphere 등의 고급 WAS에서는 **표준 JTA에서 지원하지 않는 고급 트랜잭션 기능**을 제공한다. WAS별 전용 트랜잭션 매니저를 사용하면 이러한 고급 기능을 활용할 수 있다.
+
+- **`WebSphereUowTransactionManager`**
+  - WebSphere의 UOWManager를 통해 WebSphere가 제공하는 트랜잭션 서비스를 최대한 활용할 수 있다.
+  - JTA에서 기본적으로 보장되지 않는 **트랜잭션 일시중단 기능**이 제공돼 `REQUIRES_NEW` 같은 트랜잭션 전파 속성을 사용할 수 있다.
+- **`WebLogicJtaTransactionManager`**
+  - WebLogic 서버의 트랜잭션 서비스를 최대한 활용. 트랜잭션 이름, 격리수준 설정, 트랜잭션 일시중지/재시작 등 모두 활용 가능.
+  - WebLogic 서버의 트랜잭션 모니터를 통해 스프링에서 진행되는 트랜잭션을 관찰할 수 있게 해준다.
+- **`OC4JJtaTransactionManager`**
+  - OC4J 서버의 트랜잭션 기능에 최적화된 트랜잭션 매니저.
+
+이 세 가지 서버를 사용하는 경우라면 `JtaTransactionManager` 대신 해당 서버 전용 트랜잭션 매니저를 사용하는 편이 좋다. **서버에 따라 트랜잭션 매니저의 종류를 변경하기가 귀찮다면 스프링이 제공하는 자동인식 태그**를 사용할 수도 있다.
+
+```xml
+<tx:jta-transaction-manager/>
+```
+
+이 태그를 이용하면 JTA 트랜잭션 매니저를 등록할 수 있다. 이 설정을 가진 애플리케이션을 WebSphere에 가져가면 WebSphere용 JTA 트랜잭션 매니저가 등록되고, OC4J에 배치하면 OC4J용 트랜잭션 매니저가 자동 등록된다. 세 개의 서버 외에 배치됐을 땐 기본인 `JtaTransactionManager`가 사용된다.
+
+## 스프링 3.1의 데이터 액세스 기술
+스프링 3.1의 데이터 액세스 기술에 큰 변화는 없다. 하이버네이트와 JPA 모듈에 작은 지원 기능이 추가됐을 뿐이다.
+
+> 스프링의 서브 프로젝트인 **스프링 데이터(Spring Data)** 프로젝트는 Hadoop, GemFire, Redis, Riak, MongoDB, CouchDB, Neo4j, HBase, Cassandra, S3 Blob 등 NoSQL을 중심으로 다양한 기술을 손쉽게 사용할 수 있도록 도와주는 모듈을 제공한다. 또한 JPA와 JDBC에 대해서도 스프링의 기본 데이터 액세스 전략 이상의 편리한 기능을 제공하는 확장 모듈을 지원하기도 한다.
+
+### persistence.xml 없이 JPA 사용하기
+JPA에선 `META-INF/persistence.xml` 파일을 이용해 퍼시스턴트 유닛을 정의하고, 이를 이용해 `EntityFactoryManager`를 생성한다. 퍼시스턴트 유닛에는 엔티티 클래스, DB 연결정보나 트랜잭션 관련 정보가 포함된다.
+
+스프링 3.1에선 스프링의 **클래스 스캐닝 기술**을 이용해 JPA 엔티티 클래스를 찾아 자동으로 등록하는 방법이 지원된다. 이를 적용하면 **`persistence.xml` 파일을 아예 생략할 수도 있다.**
+
+```xml
+<bean id="emf"
+      class="org.springframework.orm.jpa.LocalContainerEntityManagerFactoryBean">
+    <property name="dataSource" ref="dataSource"/>
+    <property name="packagesToScan" value="springbook.learningtest.spring31.jpa"/>
+    ...
+</bean>
+```
+
+스프링 3.1에선 `JpaTemplate` 클래스에 **`@Deprecated`**가 추가됐다. 더 이상 사용이 권장되지 않으며 앞으로 스프링 프레임워크에서 제거될 수도 있다. DAO 클래스에 `@Repository`를 부여하는 것으로 스프링 데이터 액세스 기술의 주요한 기능이 모두 적용되므로, **`@PersistenceContext`로 주입받은 `EntityManager` 오브젝트의 API를 직접 사용하는 것으로 충분하다.**
+
+### 하이버네이트 4 지원
+스프링 3.1은 **하이버네이트 4를 공식적으로 지원**한다. 하이버네이트 4를 사용한다면 새롭게 추가된 `org.springframework.orm.hibernate4` 패키지 아래의 클래스를 사용해야 한다.
+
+- **`LocalSessionFactoryBean`**
+  - hibernate4 패키지에 있는 클래스. hibernate3 패키지의 동명 클래스와 기능적으론 비슷하지만 hibernate3.annotation 패키지의 `AnnotationSessionFactoryBean`과 유사하다.
+  - 이제는 애노테이션 매핑정보가 보편적으로 사용되기 때문에 hibernate4용 `LocalSessionFactoryBean`은 `annotatedClasses`나 `packageToScan` 같은 프로퍼티를 사용할 수 있다.
+- **`LocalSessionFactoryBuilder`**
+  - **`@Configuration` 클래스에서 세션 팩토리 빈을 등록할 때 편리하게 사용**할 수 있도록 만들어진 빌더 클래스다.
+  - 메소드 체인 스타일을 이용해 세션 팩토리를 구성한 뒤 생성할 수 있다.
+
+```java
+@Configuration
+public class DataAccessConfig {
+    @Autowired Environment env;
+
+    @Bean
+    public SessionFactory sessionFactory() {
+        return new LocalSessionFactoryBuilder(dataSource())
+                .scanPackages("myproject.entity")
+                .setProperty(SHOW_SQL, env.getProperty(SHOW_SQL))
+                .setProperty(DIALECT, env.getProperty(DIALECT))
+                .setProperty(HBM2DDL_AUTO, env.getProperty(HBM2DDL_AUTO))
+                .buildSessionFactory();
+    }
+
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        return new HibernateTransactionManager(sessionFactory());
+    }
+}
+```
+
+하이버네이트용 트랜잭션 매니저 클래스나 `OpenSessionInViewInterceptor` 등도 hibernate4 패키지의 것을 사용해야 한다.
+
+### @EnableTransactionManagement
+`@EnableTransactionManagement`는 **XML의 `<tx:annotation-driven/>`과 동일한 컨테이너 인프라 빈을 등록해주는 자바 코드 설정용 애노테이션**이다. `@Transactional` 애노테이션을 이용한 트랜잭션 설정을 가능하게 해준다.
+
+```java
+@Configuration
+@EnableTransactionManagement
+public class AppConfig {
+    @Bean
+    public PlatformTransactionManager transactionManager() {
+        return new DataSourceTransactionManager(dataSource());
+    }
+
+    @Bean
+    public DataSource dataSource() { ... }
+}
+```
+
+`<tx:annotation-driven>`은 `transactionManager`라는 이름으로 등록된 `PlatformTransactionManager` 타입의 빈을 트랜잭션 매니저로 사용한다. 반면 `@EnableTransactionManagement`는 **`PlatformTransactionManager` 타입으로 등록된 빈을 찾아서 사용**하기 때문에 빈의 이름은 신경 쓰지 않아도 된다.
+
+트랜잭션 매니저가 두 개 이상 등록돼 있어 **어느 트랜잭션 매니저를 사용할지 결정할 수 없거나** 명시적으로 지정하고 싶다면 `TransactionManagementConfigurer` 타입의 트랜잭션 관리 설정자를 이용해야 한다.
+
+```java
+@Configuration
+@EnableTransactionManagement
+public class AppConfig implements TransactionManagementConfigurer {
+    @Bean
+    public PlatformTransactionManager myTxManager() { ... }
+
+    @Override
+    public PlatformTransactionManager annotationDrivenTransactionManager() {
+        return myTxManager();
+    }
+}
+```
+
+### JdbcTemplate 사용 권장
+스프링 3.0에선 `JdbcTemplate`보다 자바 5 이상의 언어 특징을 반영해 `JdbcTemplate`을 확장한 **`SimpleJdbcTemplate`의 사용이 권장**됐다.
+
+그런데 스프링 3.1에선 `SimpleJdbcTemplate`의 모든 기능이 `JdbcTemplate`과 `NamedParameterJdbcTemplate`에 제공되도록 만들어졌고, **`SimpleJdbcTemplate`은 더 이상 사용이 권장되지 않도록 `@Deprecated`** 돼 버렸다.
+
+당장 그만둘 필요는 없지만, **스프링 3.1을 이용해 새롭게 개발을 시작한다면 `SimpleJdbcTemplate` 대신 `JdbcTemplate`과 `NamedParameterJdbcTemplate`을 이용하는 편이 좋다.**
+
+## 정리
+2장에서는 스프링이 지원하는 데이터 액세스 기술의 종류와 활용 방법을 알아봤다. 스프링은 자바의 다양한 데이터 액세스 기술을 가능한 일관된 방법을 통해 접근할 수 있도록 다양한 기술을 제공한다.
+
+- **DAO 패턴**을 이용하면 데이터 액세스 계층과 서비스 계층을 깔끔하게 분리하고 데이터 액세스 기술을 자유롭게 변경해서 사용할 수 있다.
+- **스프링 JDBC**는 JDBC DAO를 템플릿/콜백 방식을 이용해 편리하게 작성할 수 있게 해준다.
+- **iBatis**로 DAO를 만들 때도 SQL 매핑 기능과 함께 스프링의 템플릿/콜백 지원 기능을 사용할 수 있다.
+- **JPA와 하이버네이트**를 이용하는 DAO에선 템플릿/콜백과 자체적인 API를 선택적으로 사용할 수 있다.
+- **트랜잭션 경계설정**은 XML의 스키마 태그와 애노테이션을 이용해 정의할 수 있다. 또한 트랜잭션 AOP를 적용할 땐 프록시와 AspectJ를 사용할 수 있다.
+- 스프링은 **하나 이상의 데이터 액세스 기술로 만들어진 DAO**를 같은 트랜잭션 안에서 동작하도록 만들어준다. 하나 이상의 DB를 사용할 땐 JTA 지원 기능을 활용해야 한다.
