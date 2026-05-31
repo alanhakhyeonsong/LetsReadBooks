@@ -12,7 +12,7 @@
 - [6장. 파티셔닝](./contents/chapter06.md)
 - [7장. 트랜잭션](./contents/chapter07.md)
 - [8장. 분산 시스템의 골칫거리](./contents/chapter08.md)
-- 9장. 일관성과 합의
+- [9장. 일관성과 합의](./contents/chapter09.md)
 
 ### Part 3 - 파생 데이터
 - 10장. 일괄 처리
