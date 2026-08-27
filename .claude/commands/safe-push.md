@@ -64,7 +64,7 @@ git log --format="%an <%ae>" -5
 - 없으면 변경 내용을 분석하여 CLAUDE.md의 커밋 컨벤션에 맞는 메시지를 자동 생성한다.
 - 커밋 메시지 끝에 반드시 아래를 포함한다:
 ```
-Co-Authored-By: Claude Opus 4.6 <noreply@anthropic.com>
+Co-Authored-By: Claude Opus 5 (1M context) <noreply@anthropic.com>
 ```
 
 ### 6. 푸시
