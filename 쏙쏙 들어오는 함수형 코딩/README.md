@@ -10,7 +10,7 @@
 - [6장. 변경 가능한 데이터 구조를 가진 언어에서 불변성 유지하기](./contents/chapter06.md)
 - [7장. 신뢰할 수 없는 코드를 쓰면서 불변성 지키기](./contents/chapter07.md)
 - [8장. 계층형 설계 I](./contents/chapter08.md)
-- 9장. 계층형 설계 II
+- [9장. 계층형 설계 II](./contents/chapter09.md)
 
 ### Part 2 - 일급 추상
 - 10장. 일급 함수 I
